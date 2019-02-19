@@ -15,6 +15,7 @@ RUN mkdir /WORKDIR
 WORKDIR /WORKDIR
 
 # dependencies
+RUN apt-get install -y pkg-config
 RUN apt-get install -y libnl-dev libnl1
 RUN apt-get install -y libssl-dev
 RUN apt-get install -y libiw-dev
@@ -38,6 +39,3 @@ COPY config /WORKDIR/hostap/hostapd/.config
 # compile hostapd
 RUN cd /WORKDIR/hostap/hostapd;make -j4
 
-RUN if [ ! -d /WORKDIR/bin ]; then mkdir /WORKDIR/bin; fi& \
-    list_files="hostap/hostapd/hostapd hostap/hostapd/hostapd_cli iw/iw"; \
-    for f in $list_files; do cp "/WORKDIR/$f" /WORKDIR/bin; done

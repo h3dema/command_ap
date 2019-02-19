@@ -1,6 +1,16 @@
 #!/bin/bash
 
 
+is_docker_installed=`dpkg-query -l | grep "docker.io" | wc -l`
+if [ "$is_docker_installed" -eq "1" ];
+    version=`docker version | grep "Client version" | awk '{print $3}'`
+    #dpkg-query -l | grep "docker.io" | echo "`awk '{print $2}'`"
+    echo "docker.io version $version is installed"
+else
+    echo "Please install docker.io"
+    echo "sudo apt-get install docker.io"
+fi
+
 IDS=`docker ps | grep hostapd | awk '{print $1}'`
 for id in $IDS; do
     docker stop $id
@@ -13,10 +23,17 @@ fi
 # identify Ubuntu version
 is_14=`lsb_release -r | grep 14 | wc -l`
 is_16=`lsb_release -r | grep 16 | wc -l`
+is_18=`lsb_release -r | grep 18 | wc -l`
+
 if [ "$is_14" -eq 1 ]; then
     docker build -t hostapd ./14
 elif [ "$is_16" -eq 1 ]; then
     docker build -t hostapd ./16
+elif [ "$is_18" -eq 1 ]; then
+    docker build -t hostapd ./18
+else
+    echo "no compatible version"
+    exit 0
 fi
 
 
