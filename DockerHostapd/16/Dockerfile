@@ -1,4 +1,4 @@
-FROM ubuntu:14.04
+FROM ubuntu:16.04
 RUN apt-get -y update
 RUN apt-get -y upgrade
 
@@ -37,3 +37,7 @@ COPY config /WORKDIR/hostap/hostapd/.config
 
 # compile hostapd
 RUN cd /WORKDIR/hostap/hostapd;make -j4
+
+RUN if [ ! -d /WORKDIR/bin ]; then mkdir /WORKDIR/bin; fi& \
+    list_files="hostap/hostapd/hostapd hostap/hostapd/hostapd_cli iw/iw"; \
+    for f in $list_files; do cp "/WORKDIR/$f" /WORKDIR/bin; done
