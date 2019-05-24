@@ -254,11 +254,15 @@ if __name__ == '__main__':
 
     parser.add_argument('--info', action='store_true', help='show hostapd info')
     parser.add_argument('--iw', action='store_true', help='show hostapd info')
+
     parser.add_argument('--increment-channel', action='store_true', help='increment the channel (cycle)')
+    parser.add_argument('--channel', type=int, default=None, help='set the channel')
+
     parser.add_argument('--stations', action='store_true', help='show stations')
     parser.add_argument('--survey', action='store_true', help='survey channels')
 
     parser.add_argument('--power', type=str, default=None, help='set new power in dBm')
+
     parser.add_argument('--disassociate', type=str, default=None, help='disassociate station')
     args = parser.parse_args()
 
@@ -266,6 +270,13 @@ if __name__ == '__main__':
     if args.info:
         for k, v in status.items():
             print("{} : {}".format(k, v))
+
+    if args.channel is not None:
+        try:
+            channel = int(args.channel)
+            change_channel(channel, path_hostapd_cli=args.path_hostapd_cli)
+        except ValueError:
+            pass
 
     if args.increment_channel:
         channel = status.get('channel', 1)
