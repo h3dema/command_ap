@@ -4,8 +4,17 @@
     used to send commands to the AP
 
 
-    Usage:
+    Usage from command line:
+    -------------------
+
     python3 server.py [--port 8080]
+
+
+    Usage from program:
+    -------------------
+
+    import server
+    server.run(port)
 """
 import argparse
 import pickle
