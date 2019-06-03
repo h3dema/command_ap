@@ -17,7 +17,8 @@ import re
 valid_frequency = [2412 + i * 5 for i in range(13)]
 __HOSTAPD_CLI = "hostapd_cli"
 __DEFAULT_HOSTAPD_CLI_PATH = '/usr/sbin/'
-__DEFAULT_IW_PATH = '/usr/sbin/'
+__DEFAULT_IW_PATH = '/sbin/'
+__DEFAULT_IWCONFIG_PATH = '/sbin'
 
 
 def get_status(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
@@ -152,18 +153,45 @@ def get_iw_info(interface, path_iw=__DEFAULT_IW_PATH):
     return result
 
 
-def get_power(interface, path_iw=__DEFAULT_IW_PATH):
-    """ get the power in the interface
+def get_iwconfig_info(interface, path_iwconfig=__DEFAULT_IWCONFIG_PATH):
+    cmd = "{} {}".format(os.path.join(path_iwconfig, 'iwconfig'), interface)
+    with os.popen(cmd) as p:
+        ret = p.read().replace('\t', '').split('\n')
+        result = {'interface': interface}
+        for i in range(len(ret)):
+            line = ret[i].lower()
+            if 'mode' in line:
+                line = ret[i].split()
+                result.update({'IEEE': line[2],
+                               'Mode': line[3].split(':')[1],
+                               'txpower': float(line[4].split('=')[1]),
+                               })
+            elif 'retry' in line:
+                line = ret[i].split(':')
+                result.update({'retry_short_limit': line[1].split()[0],
+                               'rts_threshold': line[2].split()[0],
+                               'fragment_threshold': line[3].split()[0],
+                               })
+            elif 'management' in line:
+                result.update({'power_management': False if 'off' in line else True})
+    return result
+
+
+def get_power(interface, path_iw=__DEFAULT_IW_PATH, path_iwconfig=__DEFAULT_IWCONFIG_PATH):
+    """ get the power in the interface (from a station or AP)
 
         :param interface: interface to change
         :param path_iw: path to iw
     """
     ret = get_iw_info(interface, path_iw)
+    if ret.get('type', '') == 'AP':
+        ret = get_iwconfig_info(interface, path_iwconfig)
     return ret.get('txpower', None)
 
 
 def set_power(interface, new_power, path_iw=__DEFAULT_IW_PATH):
     """ command dev <devname> set txpower <auto|fixed|limit> [<tx power in mBm>]
+        NOTE: this module needs to run as superuser to set the power
 
         :param interface: interface to change
         :param new_power: can be a string 'auto', or a number (int or float) that represents the new power in dBm
@@ -254,6 +282,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--info', action='store_true', help='show hostapd info')
     parser.add_argument('--iw', action='store_true', help='show hostapd info')
+    parser.add_argument('--iwconfig', action='store_true', help='show iwconfig info')
 
     parser.add_argument('--increment-channel', action='store_true', help='increment the channel (cycle)')
     parser.add_argument('--channel', type=int, default=None, help='set the channel')
@@ -330,3 +359,7 @@ if __name__ == '__main__':
             for w in ret[k]:
                 print('\t{}: {}'.format(w, ret[k][w]))
 
+
+    if args.iwconfig:
+        ret = get_iwconfig_info(args.iface)
+        print(ret)

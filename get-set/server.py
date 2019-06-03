@@ -20,7 +20,7 @@ import argparse
 import pickle
 from http.server import BaseHTTPRequestHandler
 from http.server import HTTPServer
-
+import sys
 
 PORT_NUMBER = 8080
 
@@ -35,6 +35,33 @@ class myHandler(BaseHTTPRequestHandler):
         # Send the html message
         self.wfile.write("".encode())
 
+    def send_dictionary(self, d):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        msg = pickle.dumps(d, protocol=pickle.HIGHEST_PROTOCOL)
+        self.wfile.write(msg)
+
+    def info(self):
+        # TODO: read from GET the interface name
+        info = get_iw_info(interface='wlan0')
+        self.send_dictionary(info)
+
+    def iwconfig(self):
+        # TODO: read from GET the interface name
+        r = get_iwconfig_info(interface='wlan0')
+        self.send_dictionary(r)
+
+    def get_power(self):
+        # TODO: read from GET the interface name
+        pwr = get_power(interface='wlan0')
+        self.send_dictionary({'pwr': pwr})
+
+    def set_power(self):
+        # TODO: read from GET the interface name and the new power value
+        set_power(interface='wlan0', new_power=1)
+        self.send_dictionary({})
+
     def hello(self):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -43,16 +70,9 @@ class myHandler(BaseHTTPRequestHandler):
         self.wfile.write("Hello World !".encode())
 
     def test(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
         # Send the html message
         d = {'a': 1, 'b': 10}  # message
-        # code dictionary using pickle dumps
-        # client should use pickle loads to decode
-        msg = pickle.dumps(d, protocol=pickle.HIGHEST_PROTOCOL)
-        print(msg)
-        self.wfile.write(msg)
+        self.send_dictionary(d)
 
     def do_GET(self):
         """
@@ -62,6 +82,10 @@ class myHandler(BaseHTTPRequestHandler):
         """
         function_handler = {'/': self.hello,
                             '/test': self.test,
+                            '/info': self.info,
+                            '/iwconfig': self.iwconfig,
+                            '/get_power': self.get_power,
+                            '/set_power': self.set_power,
                             }
 
         print("received", self.requestline, 'from', self.address_string())
@@ -93,4 +117,9 @@ if __name__ == "__main__":
     parser.add_argument('--port', type=int, default=8080, help='Set the server port')
     args = parser.parse_args()
 
+    # add path to sys, in order to access the commands
+    sys.path.append('../cmd')
+    from command_ap import get_iw_info, get_power, set_power, get_iwconfig_info
+
     run(args.port)
+

@@ -24,7 +24,10 @@ if __name__ == "__main__":
     conn.request(method='GET', url=args.url)
     resp = conn.getresponse()
     print("status", resp.status)
-    if resp.status == 200 and args.url == '/test':
-        """decode dictionary"""
-        data = pickle.loads(resp.read())
-        print("received", data)
+    if resp.status == 200:
+        if args.url in ['/test', '/info', '/get_power', '/iwconfig']:
+            """decode dictionary"""
+            data = pickle.loads(resp.read())
+            print("received", data)
+
+
