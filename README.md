@@ -13,3 +13,25 @@ The codes are divided into the following directories
 
 
 All other dirs are tests. **Please don't use them**
+
+
+## Install the AP
+
+To install an AP and other wireless tools in Ubuntu use the following commands
+
+```bash
+sudo apt-get install hostapd
+sudo apt-get install iw wireless-tools
+```
+
+## Running the AP
+
+To run the AP in a linux, you need the previous tools installed, and you need to configure the hostapd.
+The configuration file is hostapd.conf (see an example in the directory).
+
+You will need to change the following fields in the file:
+* __interface__ is wlan0 in my case, but you need to put here the name of your wireless interface
+* __bssid__ is the mac address of your computer's wireless network card
+* __channel__ set the channel number from 1 to 11 (in Brazil)
+* __ssid__ defines the wifi network name
+* __wpa_password__ is a string that defines the wifi network passphrase
