@@ -146,34 +146,59 @@ def get_iw_info(interface, path_iw=__DEFAULT_IW_PATH):
                     pass  # nothing to do
             elif 'txpower' in ret[i]:
                 _l = ret[i].split()
-                result.append([_l[0], _l[1] + _l[2]])
+                result.append([_l[0], '{} {}'.format(_l[1], _l[2])])
             else:
                 result.append(ret[i].split())
         result = dict([v for v in result if len(v) == 2])
     return result
 
 
+def grab_first(x, k, type=None):
+    """ helper function to decode iwconfig"""
+    v = x.split(k)[1].split()[0]
+    if type is not None:
+        try:
+            v = type(v)
+        except ValueError:
+            pass  # just keep the same value
+    return v
+
+
+cmds_iwconfig = {'IEEE': lambda x: grab_first(x, 'IEEE'),
+                 'ESSID': lambda x: grab_first(x, 'ESSID:'),
+                 'Mode': lambda x: grab_first(x, 'Mode:'),
+                 'Frequency': lambda x: grab_first(x, 'Frequency:', float),
+                 'AP': lambda x: grab_first(x, 'Access Point: '),
+                 'Bit Rate': lambda x: grab_first(x, 'Bit Rate=', int),
+                 'Tx Power': lambda x: grab_first(x, 'Tx-Power=', int),
+                 'Retry short limit': lambda x: grab_first(x, 'Retry short limit:', int),
+                 'RTS thr': lambda x: grab_first(x, 'RTS thr:'),
+                 'Fragment thr': lambda x: grab_first(x, 'Fragment thr:'),
+                 'Power Management': lambda x: grab_first(x, 'Power Management:'),
+                 'Link Quality': lambda x: grab_first(x, 'Link Quality='),
+                 'Signal level': lambda x: grab_first(x, 'Signal level=', int),
+                 'Rx invalid nwid': lambda x: grab_first(x, 'Rx invalid nwid:', int),
+                 'Rx invalid crypt': lambda x: grab_first(x, 'Rx invalid crypt:', int),
+                 'Rx invalid frag': lambda x: grab_first(x, 'Rx invalid frag:', int),
+                 'Tx excessive retries': lambda x: grab_first(x, 'Tx excessive retries:', int),
+                 'Invalid misc': lambda x: grab_first(x, 'Invalid misc:', int),
+                 'Missed beacon': lambda x: grab_first(x, 'Missed beacon:', int),
+                 }
+
+
 def get_iwconfig_info(interface, path_iwconfig=__DEFAULT_IWCONFIG_PATH):
+    """ NOTE: this method only supports two modes = Managed and Master
+    """
     cmd = "{} {}".format(os.path.join(path_iwconfig, 'iwconfig'), interface)
     with os.popen(cmd) as p:
         ret = p.read().replace('\t', '').split('\n')
         result = {'interface': interface}
-        for i in range(len(ret)):
-            line = ret[i].lower()
-            if 'mode' in line:
-                line = ret[i].split()
-                result.update({'IEEE': line[2],
-                               'Mode': line[3].split(':')[1],
-                               'txpower': float(line[4].split('=')[1]),
-                               })
-            elif 'retry' in line:
-                line = ret[i].split(':')
-                result.update({'retry_short_limit': line[1].split()[0],
-                               'rts_threshold': line[2].split()[0],
-                               'fragment_threshold': line[3].split()[0],
-                               })
-            elif 'management' in line:
-                result.update({'power_management': False if 'off' in line else True})
+        for line in ret:
+            for k in cmds_iwconfig:
+                if k in line:
+                    f = cmds_iwconfig[k]
+                    x = f(line)
+                    result[k] = x
     return result
 
 
@@ -186,7 +211,10 @@ def get_power(interface, path_iw=__DEFAULT_IW_PATH, path_iwconfig=__DEFAULT_IWCO
     ret = get_iw_info(interface, path_iw)
     if ret.get('type', '') == 'AP':
         ret = get_iwconfig_info(interface, path_iwconfig)
-    return ret.get('txpower', None)
+        txpower = ret.get('Tx Power', None)
+    else:
+        txpower = ret.get('txpower', None)
+    return txpower
 
 
 def set_power(interface, new_power, path_iw=__DEFAULT_IW_PATH):

@@ -10,6 +10,10 @@
 import argparse
 import http.client
 import pickle
+import urllib.parse
+
+
+valid_urls = ['/', '/test', '/info', '/get_power', '/set_power', '/iwconfig']
 
 
 if __name__ == "__main__":
@@ -17,11 +21,23 @@ if __name__ == "__main__":
     parser.add_argument('--server', type=str, default='localhost', help='Set the server address')
     parser.add_argument('--port', type=int, default=8080, help='Set the server port')
     parser.add_argument('--url', type=str, default='/', help='url specifies the command')
+    parser.add_argument('--interface', type=str, default='wlan0', help='wireless interface at the remote device')
+    parser.add_argument('--txpower', type=int, default=15, help='set txpower when used with /set_power')
 
     args = parser.parse_args()
-
     conn = http.client.HTTPConnection(args.server, args.port)
-    conn.request(method='GET', url=args.url)
+
+    if args.url in ['/info', '/iwconfig', '/get_power']:
+        params = {'iface': args.interface}
+        q = urllib.parse.urlencode(params)
+        url = "{}?{}".format(args.url, q)
+    elif args.url in ['/set_power']:
+        params = {'iface': args.interface, 'new_power': 1}
+        q = urllib.parse.urlencode(params)
+        url = "{}?{}".format(args.url, q)
+    else:
+        url = args.url
+    conn.request(method='GET', url=url)
     resp = conn.getresponse()
     print("status", resp.status)
     if resp.status == 200:

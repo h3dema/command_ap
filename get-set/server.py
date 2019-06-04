@@ -18,9 +18,11 @@
 """
 import argparse
 import pickle
+import sys
+import urllib.parse
 from http.server import BaseHTTPRequestHandler
 from http.server import HTTPServer
-import sys
+
 
 PORT_NUMBER = 8080
 
@@ -28,6 +30,11 @@ PORT_NUMBER = 8080
 class myHandler(BaseHTTPRequestHandler):
     """"This class will handles any incoming request from the browser
     """
+    @property
+    def query(self):
+        q = urllib.parse.urlparse(self.path).query
+        return urllib.parse.parse_qs(q)
+
     def do_nothing(self):
         self.send_response(404)  # Not found
         self.send_header('Content-type', 'text/html')
@@ -43,24 +50,26 @@ class myHandler(BaseHTTPRequestHandler):
         self.wfile.write(msg)
 
     def info(self):
-        # TODO: read from GET the interface name
-        info = get_iw_info(interface='wlan0')
+        iface = self.query.get('iface', [''])[0]
+        info = get_iw_info(interface=iface)
         self.send_dictionary(info)
 
     def iwconfig(self):
-        # TODO: read from GET the interface name
-        r = get_iwconfig_info(interface='wlan0')
+        iface = self.query.get('iface', [''])[0]
+        r = get_iwconfig_info(interface=iface)
         self.send_dictionary(r)
 
     def get_power(self):
-        # TODO: read from GET the interface name
-        pwr = get_power(interface='wlan0')
-        self.send_dictionary({'pwr': pwr})
+        iface = self.query.get('iface', [''])[0]
+        pwr = get_power(interface=iface)
+        self.send_dictionary({'txpower': pwr})
 
     def set_power(self):
-        # TODO: read from GET the interface name and the new power value
-        set_power(interface='wlan0', new_power=1)
-        self.send_dictionary({})
+        iface = self.query.get('iface', [''])[0]
+        new_power = self.query.get('new_power', [-1])[0]
+        if new_power > 0:
+            set_power(interface=iface, new_power=new_power)
+        self.send_dictionary({'txpower': new_power})
 
     def hello(self):
         self.send_response(200)
@@ -91,8 +100,11 @@ class myHandler(BaseHTTPRequestHandler):
         print("received", self.requestline, 'from', self.address_string())
         print('path', self.path)
 
+        cmd = urllib.parse.urlparse(self.path).path
+        print(cmd)
+
         """Handler for the GET requests"""
-        func = function_handler.get(self.path, self.do_nothing)
+        func = function_handler.get(cmd, self.do_nothing)
         func()
         return
 
