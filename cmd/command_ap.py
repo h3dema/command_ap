@@ -21,6 +21,28 @@ __DEFAULT_IW_PATH = '/sbin/'
 __DEFAULT_IWCONFIG_PATH = '/sbin'
 
 
+def get_iw_stations(interface, path_iw=__DEFAULT_IW_PATH):
+    cmd = "{} dev {} station dump".format(os.path.join(path_iw, 'iw'), interface)
+    result = dict()
+    with os.popen(cmd) as p:
+        ret = p.read().replace('\t', '').split('\n')
+    station = None
+    for _l in ret:
+        if 'Station' in _l:
+            station = _l.split()[1]
+            result[station] = dict()
+        elif station is not None and len(_l.strip()) > 0:
+            _l = _l.split(':')
+            print(_l)
+            v = _l[1].strip().split()[0]
+            try:
+                v = float(v)
+            except ValueError:
+                pass
+            result[station][_l[0]] = v
+    return result
+
+
 def get_status(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
     """ get information from hostapd_cli
 
@@ -323,6 +345,10 @@ if __name__ == '__main__':
     parser.add_argument('--disassociate', type=str, default=None, help='disassociate station')
     args = parser.parse_args()
 
+    print(get_iw_stations(args.iface))
+    import sys
+    sys.exit(0)
+
     status = get_status(args.path_hostapd_cli)
     if args.info:
         for k, v in status.items():
@@ -386,7 +412,6 @@ if __name__ == '__main__':
             print("Channel: {}".format(k))
             for w in ret[k]:
                 print('\t{}: {}'.format(w, ret[k][w]))
-
 
     if args.iwconfig:
         ret = get_iwconfig_info(args.iface)

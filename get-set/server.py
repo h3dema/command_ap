@@ -71,6 +71,38 @@ class myHandler(BaseHTTPRequestHandler):
             set_power(interface=iface, new_power=new_power)
         self.send_dictionary({'txpower': new_power})
 
+    def get_features(self):
+        """ here we collect all features necessary to train the QoS predictor
+        """
+        iface = self.query.get('iface', [''])[0]
+        station_mac = self.query.get('mac', [''])[0]
+
+        survey = get_survey(interface=iface)
+        k = [k for k in survey if survey[k].get('in use', False)][0]  # get only the channel in use
+
+        stations = get_iw_stations(interface=iface)
+        station = stations[station_mac]
+
+        result = {'num_stations': len(stations),
+                  'txpower': get_power(interface=iface),
+                  'cat': survey[k]['channel active time'],
+                  'cbt': survey[k]['channel busy time'],
+                  'crt': survey[k]['channel receive time'],
+                  'ctt': survey[k]['channel transmit time'],
+                  'avg_signal': station['signal avg'],
+                  'txf': station['tx failed'],
+                  'txr': station['tx retries'],
+                  'txp': station['tx packets'],
+                  'txb': station['tx bytes'],
+                  'rxdrop': station['rx drop misc'],
+                  'rxb': station['rx bytes'],
+                  'rxp': station['rx packets'],
+                  'tx_bitrate': station['tx bitrate'],
+                  'rx_bitrate': station['rx bitrate'],
+                  }
+
+        self.send_dictionary(result)
+
     def hello(self):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -126,6 +158,7 @@ if __name__ == "__main__":
     # add path to sys, in order to access the commands
     sys.path.append('../cmd')
     from command_ap import get_iw_info, get_power, set_power, get_iwconfig_info
+    from command_ap import get_survey, get_iw_stations
 
     run(args.port)
 
