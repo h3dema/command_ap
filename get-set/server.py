@@ -35,12 +35,12 @@ class myHandler(BaseHTTPRequestHandler):
         q = urllib.parse.urlparse(self.path).query
         return urllib.parse.parse_qs(q)
 
-    def do_nothing(self):
+    def send_error(self):
         self.send_response(404)  # Not found
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         # Send the html message
-        self.wfile.write("".encode())
+        self.wfile.write("Command unknown".encode())
 
     def send_dictionary(self, d):
         self.send_response(200)
@@ -78,11 +78,6 @@ class myHandler(BaseHTTPRequestHandler):
         # Send the html message
         self.wfile.write("Hello World !".encode())
 
-    def test(self):
-        # Send the html message
-        d = {'a': 1, 'b': 10}  # message
-        self.send_dictionary(d)
-
     def do_GET(self):
         """
             self.path is the command the client wants to execute
@@ -90,7 +85,6 @@ class myHandler(BaseHTTPRequestHandler):
             function_handler is a dictionary that contains {url : function responds to the command}
         """
         function_handler = {'/': self.hello,
-                            '/test': self.test,
                             '/info': self.info,
                             '/iwconfig': self.iwconfig,
                             '/get_power': self.get_power,
@@ -104,7 +98,7 @@ class myHandler(BaseHTTPRequestHandler):
         print(cmd)
 
         """Handler for the GET requests"""
-        func = function_handler.get(cmd, self.do_nothing)
+        func = function_handler.get(cmd, self.send_error)
         func()
         return
 
