@@ -23,8 +23,8 @@ if __name__ == "__main__":
     parser.add_argument('--url', type=str, default='/', help='url specifies the command')
     parser.add_argument('--interface', type=str, default='wlan0', help='wireless interface at the remote device')
     parser.add_argument('--txpower', type=int, default=15, help='set txpower when used with /set_power')
-
     args = parser.parse_args()
+
     conn = http.client.HTTPConnection(args.server, args.port)
 
     if args.url in ['/info', '/iwconfig', '/get_power']:
