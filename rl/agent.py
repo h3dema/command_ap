@@ -1,8 +1,13 @@
 #!/usr/bin/python
 """
-    runs the agent
-
+    runs the agent:
     python3 agent.py
+
+
+    the --double-trick parameter uses the trick suggested by xxx, since MAB was not meant to run forever.
+    If it is active, time periods of T iterations will be considered,
+    and for each T iteractions this period is increased to 2T.
+    --T define the initial period.
 
 """
 __author__ = "Henrique Moura"
