@@ -231,11 +231,10 @@ def get_power(interface, path_iw=__DEFAULT_IW_PATH, path_iwconfig=__DEFAULT_IWCO
         :param path_iw: path to iw
     """
     ret = get_iw_info(interface, path_iw)
-    if ret.get('type', '') == 'AP':
+    txpower = ret.get('txpower', None)
+    if txpower is None:
         ret = get_iwconfig_info(interface, path_iwconfig)
         txpower = ret.get('Tx Power', None)
-    else:
-        txpower = ret.get('txpower', None)
     return txpower
 
 
