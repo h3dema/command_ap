@@ -33,8 +33,10 @@ def get_iw_stations(interface, path_iw=__DEFAULT_IW_PATH):
             result[station] = dict()
         elif station is not None and len(_l.strip()) > 0:
             _l = _l.split(':')
-            print(_l)
             v = _l[1].strip().split()[0]
+            f = re.findall(r"[-+]?\d*\.\d+|\d+", v)
+            if len(f) > 0:
+                v = f[0]
             try:
                 v = float(v)
             except ValueError:
@@ -235,6 +237,13 @@ def get_power(interface, path_iw=__DEFAULT_IW_PATH, path_iwconfig=__DEFAULT_IWCO
     if txpower is None:
         ret = get_iwconfig_info(interface, path_iwconfig)
         txpower = ret.get('Tx Power', None)
+    f = re.findall(r"[-+]?\d*\.\d+|\d+", txpower)
+    if len(f) > 0:
+        v = f[0]
+        try:
+            txpower = float(v)
+        except ValueError:
+            pass  # nothing to do
     return txpower
 
 
@@ -314,7 +323,13 @@ def get_survey(interface, path_iw=__DEFAULT_IW_PATH):
         if freq is not None:
             _l = [v.strip() for v in _l.replace('\t', ' ').split(':')]
             try:
-                result[freq][_l[0]] = _l[1]
+                k = _l[0]
+                v = _l[1]
+                f = re.findall(r"[-+]?\d*\.\d+|\d+", v)
+                if len(f) > 0:
+                    v = f[0]
+                    v = float(v)
+                result[freq][k] = v
             except IndexError:
                 pass
     return result
@@ -339,14 +354,15 @@ if __name__ == '__main__':
     parser.add_argument('--stations', action='store_true', help='show stations')
     parser.add_argument('--survey', action='store_true', help='survey channels')
 
+    parser.add_argument('--iw-stations', action='store_true', help='get stations using iw command')
+
     parser.add_argument('--power', type=str, default=None, help='set new power in dBm')
 
     parser.add_argument('--disassociate', type=str, default=None, help='disassociate station')
     args = parser.parse_args()
 
-    print(get_iw_stations(args.iface))
-    import sys
-    sys.exit(0)
+    if args.iw_stations:
+        print(get_iw_stations(args.iface))
 
     status = get_status(args.path_hostapd_cli)
     if args.info:
@@ -414,4 +430,4 @@ if __name__ == '__main__':
 
     if args.iwconfig:
         ret = get_iwconfig_info(args.iface)
-        print(ret)
+        print("iwconfig", ret)
