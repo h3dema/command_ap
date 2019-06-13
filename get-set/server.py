@@ -67,7 +67,7 @@ class myHandler(BaseHTTPRequestHandler):
     def set_power(self):
         iface = self.query.get('iface', [''])[0]
         new_power = self.query.get('new_power', [-1])[0]
-        if new_power > 0:
+        if len(new_power) > 0:
             set_power(interface=iface, new_power=new_power)
         self.send_dictionary({'txpower': new_power})
 
@@ -121,6 +121,7 @@ class myHandler(BaseHTTPRequestHandler):
                             '/iwconfig': self.iwconfig,
                             '/get_power': self.get_power,
                             '/set_power': self.set_power,
+                            '/get_features': self.get_features,
                             }
 
         print("received", self.requestline, 'from', self.address_string())
