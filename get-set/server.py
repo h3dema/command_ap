@@ -71,6 +71,32 @@ class myHandler(BaseHTTPRequestHandler):
             set_power(interface=iface, new_power=new_power)
         self.send_dictionary({'txpower': new_power})
 
+
+
+
+    def cal_features(self, survey, station, k, stations, iface):
+        """ function to get feature of the stations.
+        """
+        results = {'num_stations': len(stations),
+                'tx_power': get_power(interface=iface),
+                'cat': survey[k].get('channel active time', ''),
+                'cbt': survey[k].get('channel busy time', ''),
+                'crt': survey[k].get('channel receive time', ''),
+                'ctt': survey[k].get('channel transmit time', ''),
+                'avg_signal': station['signal avg'],
+                'txf': station['tx failed'],
+                'txr': station['tx retries'],
+                'txp': station['tx packets'],
+                'txb': station['tx bytes'],
+                'rxdrop': station['rx drop misc'],
+                'rxb': station['rx bytes'],
+                'rxp': station['rx packets'],
+                'tx_bitrate': station['tx bitrate'],
+                'rx_bitrate': station['rx bitrate'],
+            }
+        return results
+
+
     def get_features(self):
         """ here we collect all features necessary to train the QoS predictor
         """
@@ -81,28 +107,18 @@ class myHandler(BaseHTTPRequestHandler):
         stations = get_iw_stations(interface=iface)
         if len(self.query.get('mac', [''])[0]) == 0:
             result = stations
+            for i in stations:
+                try:
+                    station = stations[i]
+                    results = self.cal_features(survey, station, k, stations, iface)
+                    result[i] = results
+                except KeyError:
+                    self.send_error() 
         else:
             station_mac = self.query.get('mac', [''])[0]        
             try:
                 station = stations[station_mac]
-
-                result = {'num_stations': len(stations),
-                        'tx_power': get_power(interface=iface),
-                        'cat': survey[k].get('channel active time', ''),
-                        'cbt': survey[k].get('channel busy time', ''),
-                        'crt': survey[k].get('channel receive time', ''),
-                        'ctt': survey[k].get('channel transmit time', ''),
-                        'avg_signal': station['signal avg'],
-                        'txf': station['tx failed'],
-                        'txr': station['tx retries'],
-                        'txp': station['tx packets'],
-                        'txb': station['tx bytes'],
-                        'rxdrop': station['rx drop misc'],
-                        'rxb': station['rx bytes'],
-                        'rxp': station['rx packets'],
-                        'tx_bitrate': station['tx bitrate'],
-                        'rx_bitrate': station['rx bitrate'],
-                        }
+                results = self.cal_features(survey, station, k, stations, iface)
             except KeyError:
                 self.send_error()
         try:
