@@ -105,6 +105,7 @@ class myHandler(BaseHTTPRequestHandler):
         k = [k for k in survey if survey[k].get('in use', False)][0]  # get only the channel in use
 
         stations = get_iw_stations(interface=iface)
+        # in case there is no parameter --mac
         if len(self.query.get('mac', [''])[0]) == 0:
             result = stations
             for i in stations:
@@ -114,6 +115,7 @@ class myHandler(BaseHTTPRequestHandler):
                     result[i] = results
                 except KeyError:
                     self.send_error() 
+        # in case there is parameter --mac                    
         else:
             station_mac = self.query.get('mac', [''])[0]        
             try:
