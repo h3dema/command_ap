@@ -120,7 +120,7 @@ class myHandler(BaseHTTPRequestHandler):
             station_mac = self.query.get('mac', [''])[0]        
             try:
                 station = stations[station_mac]
-                results = self.cal_features(survey, station, k, stations, iface)
+                result = self.cal_features(survey, station, k, stations, iface)
             except KeyError:
                 self.send_error()
         try:
