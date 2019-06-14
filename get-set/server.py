@@ -81,27 +81,30 @@ class myHandler(BaseHTTPRequestHandler):
         k = [k for k in survey if survey[k].get('in use', False)][0]  # get only the channel in use
 
         stations = get_iw_stations(interface=iface)
-        station = stations[station_mac]
+        try:
+            station = stations[station_mac]
 
-        result = {'num_stations': len(stations),
-                  'txpower': get_power(interface=iface),
-                  'cat': survey[k]['channel active time'],
-                  'cbt': survey[k]['channel busy time'],
-                  'crt': survey[k]['channel receive time'],
-                  'ctt': survey[k]['channel transmit time'],
-                  'avg_signal': station['signal avg'],
-                  'txf': station['tx failed'],
-                  'txr': station['tx retries'],
-                  'txp': station['tx packets'],
-                  'txb': station['tx bytes'],
-                  'rxdrop': station['rx drop misc'],
-                  'rxb': station['rx bytes'],
-                  'rxp': station['rx packets'],
-                  'tx_bitrate': station['tx bitrate'],
-                  'rx_bitrate': station['rx bitrate'],
-                  }
+            result = {'num_stations': len(stations),
+                      'tx_power': get_power(interface=iface),
+                      'cat': survey[k].get('channel active time', ''),
+                      'cbt': survey[k].get('channel busy time', ''),
+                      'crt': survey[k].get('channel receive time', ''),
+                      'ctt': survey[k].get('channel transmit time', ''),
+                      'avg_signal': station['signal avg'],
+                      'txf': station['tx failed'],
+                      'txr': station['tx retries'],
+                      'txp': station['tx packets'],
+                      'txb': station['tx bytes'],
+                      'rxdrop': station['rx drop misc'],
+                      'rxb': station['rx bytes'],
+                      'rxp': station['rx packets'],
+                      'tx_bitrate': station['tx bitrate'],
+                      'rx_bitrate': station['rx bitrate'],
+                      }
 
-        self.send_dictionary(result)
+            self.send_dictionary(result)
+        except KeyError:
+            self.send_error()
 
     def hello(self):
         self.send_response(200)

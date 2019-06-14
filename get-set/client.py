@@ -11,9 +11,10 @@ import argparse
 import http.client
 import pickle
 import urllib.parse
+import sys
 
 
-valid_urls = ['/', '/test', '/info', '/get_power', '/set_power', '/iwconfig','/get_features']
+valid_urls = ['/', '/test', '/info', '/get_power', '/set_power', '/iwconfig', '/get_features']
 
 
 if __name__ == "__main__":
@@ -24,8 +25,13 @@ if __name__ == "__main__":
     parser.add_argument('--interface', type=str, default='wlan0', help='wireless interface at the remote device')
     parser.add_argument('--txpower', type=str, default=15, help='set txpower when used with /set_power')
     parser.add_argument('--mac', type=str, default=15, help='set station mac when used with /get_features')
-    
+
     args = parser.parse_args()
+
+    if args.url not in valid_urls:
+        print("valid urls:", ", ".join(valid_urls))
+        print(parser.print_help())
+        sys.exit(0)
 
     conn = http.client.HTTPConnection(args.server, args.port)
 
