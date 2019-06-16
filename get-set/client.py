@@ -12,7 +12,6 @@ import http.client
 import pickle
 import urllib.parse
 import sys
-import time
 
 valid_urls = ['/', '/test', '/info', '/get_power', '/set_power', '/iwconfig', '/get_features']
 
@@ -44,7 +43,7 @@ if __name__ == "__main__":
         q = urllib.parse.urlencode(params)
         url = "{}?{}".format(args.url, q)
     elif args.url in ['/get_features']:
-        if args.mac == None:
+        if args.mac is None:
             params = {'iface': args.interface}
         else:
             params = {'iface': args.interface, 'mac': args.mac}
@@ -52,14 +51,13 @@ if __name__ == "__main__":
         url = "{}?{}".format(args.url, q)
     else:
         url = args.url
-    for i in range(0,1):
-        conn.request(method='GET', url=url)
-        
-        resp = conn.getresponse()
-        print("status", resp.status)
-        if resp.status == 200:
-            if args.url in ['/test', '/info', '/get_power', '/iwconfig','/get_features']:
-                """decode dictionary"""
-                data = pickle.loads(resp.read())
-                print("received", data.values())
+
+    conn.request(method='GET', url=url)
+    resp = conn.getresponse()
+    print("status", resp.status)
+    if resp.status == 200:
+        if args.url in ['/test', '/info', '/get_power', '/iwconfig', '/get_features']:
+            """decode dictionary"""
+            data = pickle.loads(resp.read())
+            print("received", data.values())
 

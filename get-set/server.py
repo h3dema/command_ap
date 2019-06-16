@@ -82,27 +82,27 @@ class myHandler(BaseHTTPRequestHandler):
         if len(self.query.get('mac', [''])[0]) == 0:
             result = stations
         else:
-            station_mac = self.query.get('mac', [''])[0]        
+            station_mac = self.query.get('mac', [''])[0]
             try:
                 station = stations[station_mac]
 
                 result = {'num_stations': len(stations),
-                        'tx_power': get_power(interface=iface),
-                        'cat': survey[k].get('channel active time', ''),
-                        'cbt': survey[k].get('channel busy time', ''),
-                        'crt': survey[k].get('channel receive time', ''),
-                        'ctt': survey[k].get('channel transmit time', ''),
-                        'avg_signal': station['signal avg'],
-                        'txf': station['tx failed'],
-                        'txr': station['tx retries'],
-                        'txp': station['tx packets'],
-                        'txb': station['tx bytes'],
-                        'rxdrop': station['rx drop misc'],
-                        'rxb': station['rx bytes'],
-                        'rxp': station['rx packets'],
-                        'tx_bitrate': station['tx bitrate'],
-                        'rx_bitrate': station['rx bitrate'],
-                        }
+                          'tx_power': get_power(interface=iface),
+                          'cat': survey[k].get('channel active time', ''),
+                          'cbt': survey[k].get('channel busy time', ''),
+                          'crt': survey[k].get('channel receive time', ''),
+                          'ctt': survey[k].get('channel transmit time', ''),
+                          'avg_signal': station['signal avg'],
+                          'txf': station['tx failed'],
+                          'txr': station['tx retries'],
+                          'txp': station['tx packets'],
+                          'txb': station['tx bytes'],
+                          'rxdrop': station['rx drop misc'],
+                          'rxb': station['rx bytes'],
+                          'rxp': station['rx packets'],
+                          'tx_bitrate': station['tx bitrate'],
+                          'rx_bitrate': station['rx bitrate'],
+                          }
             except KeyError:
                 self.send_error()
         try:
