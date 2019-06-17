@@ -24,6 +24,7 @@ import argparse
 import logging
 # from mab import EpsilonGreedyAbstract
 from mab import UCBAbstract
+from reward import reward
 
 #
 # set log
@@ -50,6 +51,7 @@ class MABAgent(UCBAbstract):
         # call the environment to perform the action
 
         # get the reward if the action was performed
+        # r = reward(qos, power)
 
         return 0, False
 
