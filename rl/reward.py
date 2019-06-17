@@ -32,4 +32,3 @@ def reward(qos, power):
     else:
         r = max(1 - (np.square(qos - 1) + np.square(power) / 20.0) / 0.285, 0.6)
     return r
-

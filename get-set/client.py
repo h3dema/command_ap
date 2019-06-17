@@ -8,8 +8,8 @@
     python3 server.py [--port 8080]
 """
 import argparse
-import http.client
 import pickle
+import http.client
 import urllib.parse
 import sys
 

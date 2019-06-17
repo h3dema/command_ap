@@ -22,9 +22,16 @@ __status__ = "Production"
 import sys
 import argparse
 import logging
+# import numpy as np
 # from mab import EpsilonGreedyAbstract
 from mab import UCBAbstract
 from reward import reward
+
+# *** não precisa das linhas abaixo !!!!
+# if np.any(['get-set' in v for v in sys.path]):
+#     """add path to client"""
+#     sys.path.append('../get-set')
+
 
 #
 # set log
@@ -51,7 +58,7 @@ class MABAgent(UCBAbstract):
         # call the environment to perform the action
 
         # get the reward if the action was performed
-        # r = reward(qos, power)
+        r = reward(qos, power)
 
         return 0, False
 
