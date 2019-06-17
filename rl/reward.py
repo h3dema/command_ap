@@ -22,7 +22,7 @@ __status__ = "Production"
 import numpy as np
 
 
-def reward(qos, power):
+def calc_reward(qos, power):
     """ this function goes to the agent
         it receives two scaled parameters (between 0 and 1), and
         returns the reward between 0 and 1
