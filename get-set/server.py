@@ -106,7 +106,7 @@ class myHandler(BaseHTTPRequestHandler):
 
         stations = get_iw_stations(interface=iface)
         # in case there is no parameter --mac
-        if len(self.query.get('mac', [''])[0]) == 0:
+        if len(self.query.get('mac', [])[0]) == 0:
             result = stations
             for i in stations:
                 try:
