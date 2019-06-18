@@ -28,7 +28,7 @@ def calc_reward(qos, power):
         returns the reward between 0 and 1
     """
     if qos < 0.62:
-        r = min((np.square(qos) + np.square(power) / 5.0) / 0.6, 0.6)
+        r = min((np.square(qos) + np.square(power - 1) / 10.0) / 0.6, 0.6)
     else:
         r = max(1 - (np.square(qos - 1) + np.square(power) / 20.0) / 0.285, 0.6)
     return r
