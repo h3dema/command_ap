@@ -18,7 +18,7 @@ __version__ = "2.0"
 __maintainer__ = "Henrique Moura"
 __email__ = "h3dema@gmail.com"
 __status__ = "Production"
-
+import time
 import sys
 import joblib
 import argparse
@@ -253,6 +253,7 @@ if __name__ == "__main__":
     parser.add_argument('--double-trick', action="store_true", help='Perform the double trick in the timestep')
     parser.add_argument('--T', type=int, default=2, help='initial value for double trick')
     parser.add_argument('--debug', action="store_true", help='log debug info')
+    parser.add_argument('--interval', type=int, default=1, help='interval between evaluations')
 
     parser.add_argument('--server', type=str, default='localhost', help='Set the AP address')
     parser.add_argument('--port', type=int, default=8080, help='Set the AP port')
@@ -292,6 +293,7 @@ if __name__ == "__main__":
                     T = 2 * T
                 except OverflowError:
                     T = args.T
+            time.sleep(args.interval)
         except KeyboardInterrupt:
             """exit with CTRL+c"""
             in_loop = False
