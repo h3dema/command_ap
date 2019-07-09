@@ -26,6 +26,11 @@ from abc import abstractmethod
 LOG = logging.getLogger('MAB')
 
 
+def softmax(x):
+    """returns the softmax function (probabilities) given an array x"""
+    return np.exp(x)/sum(np.exp(x))
+
+
 class MAB(object):
 
     def __init__(self, n_actions):
@@ -109,8 +114,25 @@ class UCBAbstract(MAB):
         self._b = b
         LOG.info("Created UCB agent: C={} b={}".format(C, b))
 
+    @property
+    def w(self):
+        __w = self.avg + self._C * np.sqrt(self._b * np.log(self._total_pulls) / self.n_visited)
+        return __w
+   
+    def get_prob(self):
+        """returns the probability of each action"""
+        return softmax(self.w)
+
     def get_action(self):
-        w = self.avg + self._C * np.sqrt(self._b * np.log(self._total_pulls) / self.n_visited)
-        a = np.argmax(w)
+        a = np.argmax(self.w)
         LOG.debug("Iter {:5d}: Action selected {}".format(self._total_pulls, a))
         return a
+
+    
+    class Boltzmann(UCBAbstract):
+        
+        def get_action(self):
+            p = self.get_prob()
+            # select 1 action among n_actions using the probabilities
+            a = np.random.choice(self.n_actions, 1, p=p)
+    
