@@ -109,6 +109,7 @@ class UCBAbstract(MAB):
     def __init__(self, n_actions, C=1, b=2):
         """ the defaults of C and b define a UCB1 policy
         """
+        np.seterr(divide='ignore', invalid='ignore')
         super().__init__(n_actions)
         self._C = C
         self._b = b
