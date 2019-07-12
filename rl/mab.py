@@ -129,10 +129,10 @@ class UCBAbstract(MAB):
         return a
 
     
-    class Boltzmann(UCBAbstract):
+class Boltzmann(UCBAbstract):
         
-        def get_action(self):
-            p = self.get_prob()
-            # select 1 action among n_actions using the probabilities
-            a = np.random.choice(self.n_actions, 1, p=p)
+    def get_action(self):
+        p = self.get_prob()
+        # select 1 action among n_actions using the probabilities
+        a = np.random.choice(self.n_actions, 1, p=p)
     
