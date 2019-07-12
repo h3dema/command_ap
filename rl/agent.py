@@ -45,11 +45,17 @@ from keras.layers import MaxPooling1D, AveragePooling1D
 from keras.layers import Dense, Dropout, Flatten
 from keras import metrics
 import datetime
-
+import math
 #
 # set log
 #
 LOG = logging.getLogger('AGENT')
+f_handler = logging.FileHandler('Log_Qos.log')
+f_handler.setLevel(logging.INFO)
+f_format = logging.Formatter('%(message)s')
+f_handler.setFormatter(f_format)
+
+LOG.addHandler(f_handler)
 
 
 def send_command(server, port, interface, cmd):
@@ -129,11 +135,9 @@ class MABAgent(UCBAbstract):
         self.dataFrameTx_bitrate = defaultdict(list)
         self.dataFrameRx_bitrate = defaultdict(list)
         self.rewards = []
-        """
-            TODO: model from parameter
-        """
-        self.model = load_model("best_model_epoch_269_bps.h5")
-        self.scaler = joblib.load('/opt/Projects/command_ap/rl/minmax_final_scaler.pkl')
+        self.reward = []
+        self.qos_model = load_model(args.qos_model)
+        self.min_max_scaler = joblib.load(args.min_max_scaler)
 
     def run_action(self, action):
         """
@@ -143,14 +147,12 @@ class MABAgent(UCBAbstract):
         
         # decode the int "action" into the real action
         power = action + 1  # add 1, because get_action() returns 0 to n_actions - 1
-        LOG.info("Running action {} - sets power to {}".format(action, power))
-
         # call the environment to perform the action
         set_power(self.server, self.port, self.interface, power)
 
         # get the reward if the action was performed
         features = get_features(self.server, self.port, self.interface)  # contain features with all stations
-        
+        self.rewards = []
         for k, v in features.items():
             self.cat[k].append(v.get("cat",None))
             self.cbt[k].append(v.get("cbt",None))
@@ -210,20 +212,21 @@ class MABAgent(UCBAbstract):
                 """
                     TODO: Check MIN MAX
                 """
-                
-                """
-                    TODO: get the timestamp from the parameters.
-                        using timestamp 3
-                """
                 # ignore the first two
                 if len(self.dataFrame) > 2:
                     
-                    window = create_window(self.scaler.transform(self.dataFrame.iloc[self.indexIloc :self.indexIloc +  3].values), 3)
-                    X = window[:,:,:16]                
-                    calc_qos = self.model.predict(X)
-                    LOG.info("Time {} - MAC {} - QoS prediction {}".format(datetime.datetime.now().timestamp(), k, (calc_qos) * (self.scaler.data_max_[16:17] - self.scaler.data_min_[16:17]) + self.scaler.data_min_[16:17]))
+                    window = create_window(self.min_max_scaler.transform(self.dataFrame.iloc[self.indexIloc :self.indexIloc +  args.timestamp].values), args.timestamp)
+                    X = window[:,:,:16]
+                    calc_qos = self.qos_model.predict(X)                    
+                    power_scale = (power - 1)/(15-1)
+                    r = calc_reward(calc_qos, power_scale)
+                    scale_calc = list((calc_qos) * (self.min_max_scaler.data_max_[16:17] - self.min_max_scaler.data_min_[16:17]) + self.min_max_scaler.data_min_[16:17])
+                    revers = ''.join(str(e) for e in scale_calc)
                     
-                    r = calc_reward(calc_qos, power)
+                    logTime = "Time;{};MAC;{};QoS;{};QoSScalar;{};Reward;{};Power;{};action;{}".format(datetime.datetime.now().timestamp(), 
+                    k, calc_qos, revers,r,power, action)
+                    LOG.info(logTime)
+
                     self.rewards.append(r)
                 # delete first iten
                 del self.cat[k][0:1]
@@ -240,10 +243,12 @@ class MABAgent(UCBAbstract):
             
         if len(self.dataFrame) > 2:
             self.indexIloc = self.indexIloc + 1
-        reward = np.average(self.rewards)
-        LOG.info("Reward average {}".format(reward))
-        time.sleep(1)
-        return reward, True
+        #self.reward = np.average(self.rewards)
+        self.reward = np.sum(self.rewards)
+        if np.isnan(self.reward):
+            return 0, False
+        return self.reward, True
+
 
 
 if __name__ == "__main__":
@@ -258,6 +263,9 @@ if __name__ == "__main__":
     parser.add_argument('--server', type=str, default='localhost', help='Set the AP address')
     parser.add_argument('--port', type=int, default=8080, help='Set the AP port')
     parser.add_argument('--interface', type=str, default='wlan0', help='AP wlan interface')
+    parser.add_argument('--qos-model', type=str, default='', help='Load the QoS predictor model')
+    parser.add_argument('--min-max-scaler', type=str, default='', help='Min Max Scaler from Qos model')
+    parser.add_argument('--timestamp', type=int, default='3', help='Timesatamp')
 
     args = parser.parse_args()
 
