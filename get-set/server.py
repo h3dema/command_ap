@@ -23,6 +23,12 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler
 from http.server import HTTPServer
 
+# add path to sys, in order to access the commands
+if '../cmd' not in sys.path:
+    sys.path.append('../cmd')
+from command_ap import get_iw_info, get_power, set_power, get_iwconfig_info
+from command_ap import get_survey, get_iw_stations
+
 
 PORT_NUMBER = 8080
 
@@ -176,11 +182,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Receive commands to the AP.')
     parser.add_argument('--port', type=int, default=8080, help='Set the server port')
     args = parser.parse_args()
-
-    # add path to sys, in order to access the commands
-    sys.path.append('../cmd')
-    from command_ap import get_iw_info, get_power, set_power, get_iwconfig_info
-    from command_ap import get_survey, get_iw_stations
 
     run(args.port)
 
