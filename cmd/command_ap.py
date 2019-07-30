@@ -13,13 +13,30 @@ import os
 import argparse
 import re
 
+from .ifconfig import decode_ifconfig
+from .xmit import decode_xmit
+
 
 valid_frequency = [2412 + i * 5 for i in range(13)]
 __HOSTAPD_CLI = "hostapd_cli"
 __DEFAULT_HOSTAPD_CLI_PATH = '/usr/sbin/'
 __DEFAULT_IW_PATH = '/sbin/'
 __DEFAULT_IWCONFIG_PATH = '/sbin'
+__PATH_IFCONFIG='/sbin'
 
+
+def get_xmit(phy_iface='phy0'):
+    # TODO: find if it is ath9k, ath10k....
+    path_to_xmit = os.path.join('/sys/kernel/debug/ieee80211', phy_iface, 'ath9k', 'xmit')
+    ret = decode_xmit(path_to_xmit)
+    return ret
+
+def get_ifconfig(interface, path_ifconfig=__PATH_IFCONFIG):
+    cmd = "{} {}".format(os.path.join(path_ifconfig, 'ifconfig'), interface)
+    result = dict()
+    with os.popen(cmd) as p:
+        ret = decode_ifconfig(p.readlines())
+    return ret
 
 def get_iw_stations(interface, path_iw=__DEFAULT_IW_PATH):
     cmd = "{} dev {} station dump".format(os.path.join(path_iw, 'iw'), interface)
@@ -261,6 +278,8 @@ def set_power(interface, new_power, path_iw=__DEFAULT_IW_PATH):
     elif isinstance(new_power, int) or isinstance(new_power, float):
         new_power = int(float(new_power) * 100)
         cmd = "{} dev {} set txpower fixed {}".format(iw_cmd, interface, new_power)
+    else:
+        return -1  # error
     with os.popen(cmd) as p:
         ret = p.read()
     return ret

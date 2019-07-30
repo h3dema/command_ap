@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
 """
     server that accepts requests from an http client
     used to send commands to the AP
@@ -24,10 +25,9 @@ from http.server import BaseHTTPRequestHandler
 from http.server import HTTPServer
 
 # add path to sys, in order to access the commands
-if '../cmd' not in sys.path:
-    sys.path.append('../cmd')
-from command_ap import get_iw_info, get_power, set_power, get_iwconfig_info
-from command_ap import get_survey, get_iw_stations
+from ..cmd.command_ap import get_iw_info, get_power, set_power, get_iwconfig_info
+from ..cmd.command_ap import get_survey, get_iw_stations
+from ..cmd.command_ap import get_xmit, get_ifconfig
 
 
 PORT_NUMBER = 8080
@@ -56,29 +56,63 @@ class myHandler(BaseHTTPRequestHandler):
         self.wfile.write(msg)
 
     def info(self):
+        """ process /get_info
+
+        :return:
+        """
         iface = self.query.get('iface', [''])[0]
         info = get_iw_info(interface=iface)
         self.send_dictionary(info)
 
     def iwconfig(self):
+        """ process /get_iwconfig
+
+        :return:
+        """
         iface = self.query.get('iface', [''])[0]
         r = get_iwconfig_info(interface=iface)
         self.send_dictionary(r)
 
+    def ifconfig(self):
+        """ process /get_ifconfig
+
+        :return:
+        """
+        iface = self.query.get('iface', [''])[0]
+        r = get_ifconfig(interface=iface)
+        self.send_dictionary(r)
+
     def get_power(self):
+        """ process /get_power
+
+        :return: the tx power of iface
+        """
         iface = self.query.get('iface', [''])[0]
         pwr = get_power(interface=iface)
         self.send_dictionary({'txpower': pwr})
 
     def set_power(self):
+        """ process /set_power
+
+        :return: set the tx power of iface to new_power
+        """
         iface = self.query.get('iface', [''])[0]
         new_power = self.query.get('new_power', [-1])[0]
         if len(new_power) > 0:
             set_power(interface=iface, new_power=new_power)
         self.send_dictionary({'txpower': new_power})
 
-    def cal_features(self, survey, station, k, stations, iface):
-        """ function to get feature of the stations.
+    def xmit(self):
+        """ process /get_xmit
+
+        :return:
+        """
+        phy_iface = self.query.get('iface', [''])[0]
+        r = get_xmit(phy_iface)
+        self.send_dictionary(r)
+
+    def fill_feature_results(self, survey, station, k, stations, iface):
+        """ function that returns the features of a station.
         """
         results = {'num_stations': len(stations),
                    'tx_power': get_power(interface=iface),
@@ -99,8 +133,28 @@ class myHandler(BaseHTTPRequestHandler):
                    }
         return results
 
+    def get_stations(self):
+        """ process /num_stations
+
+        :return:
+        """
+        iface = self.query.get('iface', [''])[0]
+        stations = get_iw_stations(interface=iface)
+        self.send_dictionary(stations)
+
+    def get_num_stations(self):
+        """ process /get_num_stations
+
+        :return:
+        """
+        iface = self.query.get('iface', [''])[0]
+        stations = get_iw_stations(interface=iface)
+        self.send_dictionary({'num_stations': len(stations)})
+
     def get_features(self):
-        """ here we collect all features necessary to train the QoS predictor
+        """ process /get_features
+
+            here we collect all features necessary to train the QoS predictor
         """
         iface = self.query.get('iface', [''])[0]
         survey = get_survey(interface=iface)
@@ -113,7 +167,7 @@ class myHandler(BaseHTTPRequestHandler):
             for i in stations:
                 try:
                     station = stations[i]
-                    results = self.cal_features(survey, station, k, stations, iface)
+                    results = self.fill_feature_results(survey, station, k, stations, iface)
                     result[i] = results
                 except KeyError:
                     self.send_error()
@@ -122,7 +176,7 @@ class myHandler(BaseHTTPRequestHandler):
             station_mac = self.query.get('mac', [''])[0]
             try:
                 station = stations[station_mac]
-                result = self.cal_features(survey, station, k, stations, iface)
+                result = self.fill_feature_results(survey, station, k, stations, iface)
             except KeyError:
                 self.send_error()
         try:
@@ -144,11 +198,15 @@ class myHandler(BaseHTTPRequestHandler):
             function_handler is a dictionary that contains {url : function responds to the command}
         """
         function_handler = {'/': self.hello,
-                            '/info': self.info,
-                            '/iwconfig': self.iwconfig,
+                            '/get_info': self.info,
+                            '/get_iwconfig': self.iwconfig,
                             '/get_power': self.get_power,
+                            '/get_stations': self.get_stations,
+                            '/num_stations': self.get_num_stations,
                             '/set_power': self.set_power,
                             '/get_features': self.get_features,
+                            '/get_ifconfig': self.ifconfig,
+                            '/get_xmit': self.xmit,
                             }
 
         print("received", self.requestline, 'from', self.address_string())
