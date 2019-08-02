@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-#
-# Module xmit
-# This module decodes the "xmit" file.
-# Returns a dictionary with all decoded fields.
-#
-#
+"""
+    Module xmit
+
+    This module decodes the "xmit" file.
+    Returns a dictionary with all decoded fields.
+"""
 from __future__ import print_function
 from os.path import exists, basename
 
@@ -24,6 +24,13 @@ lines_with_queue_data = ['MPDUs Queued', 'MPDUs Completed', 'MPDUs XRetried',
 
 
 def check(line, items):
+    """
+        helper function: test if one of the items in items exists in line
+
+    :param line: the line to check
+    :param items: list of items
+    :return: true if the item in items exists in line
+    """
     for item in items:
         if item in line:
             return True
@@ -31,8 +38,15 @@ def check(line, items):
 
 
 def decode_xmit(filename):
+    """
+        reads the ath*k/xmit file, if file not found returns an empty dictionary
+        otherwise decodes the file and returns a dictionary with its contents
+
+    :param filename: full path to xmit
+    :return: a dictionary with xmit's content
+    """
+    result = dict()
     if exists(filename):
-        result = dict()
         with open(filename, 'r') as f:
             for line in f:
                 if check(line, lines_with_queue_data):
@@ -55,8 +69,6 @@ def decode_xmit(filename):
                     item = r.pop(0)[1:-2]
                     for i in range(len(r) // 2):
                         result["{}_{}".format(item, r[i * 2][:-1])] = int(r[i * 2 + 1])
-    else:
-        result = None
     return result
 
 

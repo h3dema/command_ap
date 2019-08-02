@@ -1,11 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+    converts the output of ifconfig into a dictionary
+"""
 import re
 
 
 def decode_ifconfig(data):
-    ret = dict()
+    """
+    read ifconfig's output and returns a dictionary with the data
+
+    :param data: is the captured screen from ifconfig output
+    :return:
+    """
+    iface = 'ERROR'
     lines = data.replace('\t', '').split('\n')
+    try:
+        for line in lines:
+            if len(line.strip()) > 0:
+                iface = line.strip().split()[0]  # first not-blank line contains the interface name
+                break
+    except (ValueError, IndexError):
+        pass
+    ret = {'iface': iface}
     for line in lines:
         if 'RX packets:' in line:
             packets, errors, dropped, overruns, frame = re.findall(r'\d+', line)
@@ -53,3 +70,7 @@ wlan0     Link encap:Ethernet  HWaddr b0:aa:ab:ab:ac:10
           collisions:0 txqueuelen:1000 
           RX bytes:58009076 (58.0 MB)  TX bytes:2505374616 (2.5 GB)
 """
+    print("Ifconfig output\n{}".format(data))
+    r = decode_ifconfig(data)
+    print("Decoded:")
+    print("{}".format(r))

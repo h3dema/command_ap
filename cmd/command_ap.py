@@ -12,12 +12,14 @@
 import os
 import argparse
 import re
+import glob
 
 from .ifconfig import decode_ifconfig
 from .xmit import decode_xmit
+from .iwconfig import decode_iwconfig
 
 
-valid_frequency = [2412 + i * 5 for i in range(13)]
+valid_frequencies = [2412 + i * 5 for i in range(13)]
 __HOSTAPD_CLI = "hostapd_cli"
 __DEFAULT_HOSTAPD_CLI_PATH = '/usr/sbin/'
 __DEFAULT_IW_PATH = '/sbin/'
@@ -27,9 +29,15 @@ __PATH_IFCONFIG='/sbin'
 
 def get_xmit(phy_iface='phy0'):
     # TODO: find if it is ath9k, ath10k....
-    path_to_xmit = os.path.join('/sys/kernel/debug/ieee80211', phy_iface, 'ath9k', 'xmit')
+    path_to_phy = os.path.join('/sys/kernel/debug/ieee80211', phy_iface)
+    try:
+        dir_athk = glob.glob(os.path.join(path_to_phy, 'ath*k'))[0]
+    except IndexError:
+        return dict()  # error, didn't find ath9k or ath10k
+    path_to_xmit = os.path.join(path_to_phy, dir_athk, 'xmit')
     ret = decode_xmit(path_to_xmit)
     return ret
+
 
 def get_ifconfig(interface, path_ifconfig=__PATH_IFCONFIG):
     cmd = "{} {}".format(os.path.join(path_ifconfig, 'ifconfig'), interface)
@@ -106,8 +114,8 @@ def get_status(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
 
 
 def change_channel(new_channel, count=1, path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
-    assert new_channel > 0 and new_channel <= len(valid_frequency), "{} not in valid channels".format(new_channel)
-    frequency = valid_frequency[new_channel - 1]
+    assert new_channel > 0 and new_channel <= len(valid_frequencies), "{} not in valid channels".format(new_channel)
+    frequency = valid_frequencies[new_channel - 1]
     params = "chan_switch {} {}".format(count, frequency)
     cmd = "{} {}".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI), params)
     with os.popen(cmd) as p:
@@ -194,52 +202,15 @@ def get_iw_info(interface, path_iw=__DEFAULT_IW_PATH):
     return result
 
 
-def grab_first(x, k, type=None):
-    """ helper function to decode iwconfig"""
-    v = x.split(k)[1].split()[0]
-    if type is not None:
-        try:
-            v = type(v)
-        except ValueError:
-            pass  # just keep the same value
-    return v
-
-
-cmds_iwconfig = {'IEEE': lambda x: grab_first(x, 'IEEE'),
-                 'ESSID': lambda x: grab_first(x, 'ESSID:'),
-                 'Mode': lambda x: grab_first(x, 'Mode:'),
-                 'Frequency': lambda x: grab_first(x, 'Frequency:', float),
-                 'AP': lambda x: grab_first(x, 'Access Point: '),
-                 'Bit Rate': lambda x: grab_first(x, 'Bit Rate=', int),
-                 'Tx Power': lambda x: grab_first(x, 'Tx-Power=', int),
-                 'Retry short limit': lambda x: grab_first(x, 'Retry short limit:', int),
-                 'RTS thr': lambda x: grab_first(x, 'RTS thr:'),
-                 'Fragment thr': lambda x: grab_first(x, 'Fragment thr:'),
-                 'Power Management': lambda x: grab_first(x, 'Power Management:'),
-                 'Link Quality': lambda x: grab_first(x, 'Link Quality='),
-                 'Signal level': lambda x: grab_first(x, 'Signal level=', int),
-                 'Rx invalid nwid': lambda x: grab_first(x, 'Rx invalid nwid:', int),
-                 'Rx invalid crypt': lambda x: grab_first(x, 'Rx invalid crypt:', int),
-                 'Rx invalid frag': lambda x: grab_first(x, 'Rx invalid frag:', int),
-                 'Tx excessive retries': lambda x: grab_first(x, 'Tx excessive retries:', int),
-                 'Invalid misc': lambda x: grab_first(x, 'Invalid misc:', int),
-                 'Missed beacon': lambda x: grab_first(x, 'Missed beacon:', int),
-                 }
-
-
 def get_iwconfig_info(interface, path_iwconfig=__DEFAULT_IWCONFIG_PATH):
-    """ NOTE: this method only supports two modes = Managed and Master
+    """ NOTE: this method only supports (tested) two modes = Managed and Master
     """
     cmd = "{} {}".format(os.path.join(path_iwconfig, 'iwconfig'), interface)
     with os.popen(cmd) as p:
-        ret = p.read().replace('\t', '').split('\n')
         result = {'interface': interface}
-        for line in ret:
-            for k in cmds_iwconfig:
-                if k in line:
-                    f = cmds_iwconfig[k]
-                    x = f(line)
-                    result[k] = x
+        data = p.read()
+        r = decode_iwconfig(data)
+        result.update(r)
     return result
 
 
