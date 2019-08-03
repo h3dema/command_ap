@@ -11,7 +11,7 @@ def decode_ifconfig(data):
     read ifconfig's output and returns a dictionary with the data
 
     :param data: is the captured screen from ifconfig output
-    :return:
+    :return: dictionary with decoded ifconfig output
     """
     iface = 'ERROR'
     lines = data.replace('\t', '').split('\n')
