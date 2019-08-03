@@ -14,9 +14,11 @@ import argparse
 import re
 import glob
 
-from .ifconfig import decode_ifconfig
 from .xmit import decode_xmit
+from .ifconfig import decode_ifconfig
 from .iwconfig import decode_iwconfig
+from .station import decode_iw_station, decode_hostapd_status, decode_hostapd_station
+from .survey import decode_survey
 
 
 valid_frequencies = [2412 + i * 5 for i in range(13)]
@@ -46,70 +48,24 @@ def get_ifconfig(interface, path_ifconfig=__PATH_IFCONFIG):
         ret = decode_ifconfig(p.readlines())
     return ret
 
+
 def get_iw_stations(interface, path_iw=__DEFAULT_IW_PATH):
     cmd = "{} dev {} station dump".format(os.path.join(path_iw, 'iw'), interface)
-    result = dict()
     with os.popen(cmd) as p:
-        ret = p.read().replace('\t', '').split('\n')
-    station = None
-    for _l in ret:
-        if 'Station' in _l:
-            station = _l.split()[1]
-            result[station] = dict()
-        elif station is not None and len(_l.strip()) > 0:
-            _l = _l.split(':')
-            v = _l[1].strip().split()[0]
-            f = re.findall(r"[-+]?\d*\.\d+|\d+", v)
-            if len(f) > 0:
-                v = f[0]
-            try:
-                v = float(v)
-            except ValueError:
-                pass
-            result[station][_l[0]] = v
+        data = p.read().replace('\t', '').split('\n')
+    result = decode_iw_station(data)
     return result
 
 
 def get_status(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
-    """ get information from hostapd_cli
+    """ get information from hostapd_cli status
 
         todo: what if the interface has multiple SSIDs ???
-
-        :return dictionary containing
-        {olbc_ht : 1
-         cac_time_left_seconds : N/A
-         num_sta_no_short_slot_time : 0
-         olbc : 0
-         num_sta_non_erp : 0
-         ht_op_mode : 0x15
-         state : ENABLED
-         num_sta_ht40_intolerant : 0
-         channel : 6
-         bssid[0] : b0:aa:ab:ab:ac:11
-         ieee80211n : 1
-         cac_time_seconds : 0
-         num_sta[0] : 2
-         ieee80211ac : 0
-         phy : phy0
-         num_sta_ht_no_gf : 1
-         freq : 2437
-         num_sta_ht_20_mhz : 2
-         num_sta_no_short_preamble : 0
-         secondary_channel : 0
-         ssid[0] : ethanolQL1
-         num_sta_no_ht : 0
-         bss[0] : wlan0
-        }
     """
     cmd = "{} status".format(os.path.join(path_hostapd_cli, 'hostapd_cli'))
     with os.popen(cmd) as p:
-        lines = p.read().split('\n')
-    ret = dict([v for v in [a.split("=") for a in lines] if len(v) == 2])
-    for k in ret:
-        try:
-            ret[k] = int(ret[k])
-        except ValueError:
-            pass
+        data = p.read()
+    ret = decode_hostapd_status(data)
     return ret
 
 
@@ -123,58 +79,16 @@ def change_channel(new_channel, count=1, path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_
     return ret
 
 
-def is_mac(s):
-    """ verifies if s contains a MAC address
-
-        :return the mac address found or None
-    """
-    try:
-        mac = re.search(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', s, re.I).group()
-        return mac
-    except AttributeError:
-        return None
-
-
 def get_stations(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
     """ returns information about all connected stations
 
         :param path_hostapd_cli: path to hostapd_cli
         :return dictionary of dictionary
-         {station1_mac: {'dot11RSNAStatsSelectedPairwiseCipher': '00-0f-ac-4',
-                         'rx_packets': '164',
-                         'dot11RSNAStatsTKIPLocalMICFailures': '0',
-                         'rx_bytes': '5420',
-                         'inactive_msec': '11828',
-                         'connected_time': '3402',
-                         'hostapdWPAPTKState': '11',
-                         'tx_bytes': '1340',
-                         'dot11RSNAStatsVersion': '1',
-                         'tx_packets': '10',
-                         'hostapdWPAPTKGroupState': '0',
-                         'dot11RSNAStatsTKIPRemoteMICFailures': '0'},
-         }
     """
     cmd = "{} all_sta".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI))
-    result = {}
     with os.popen(cmd) as p:
-        ret = p.read().split('\n')
-    mac = None
-    for _l in ret:
-        _mac = is_mac(_l)
-        if _mac is None and mac is None:
-            continue  # skip line
-        else:
-            if _mac is not None:
-                # found a new station
-                mac = _mac
-                result[mac] = []
-            else:
-                result[mac].append(_l.split('='))
-    for k in result:
-        try:
-            result[k] = dict([v for v in result[k] if len(v) == 2])
-        except ValueError:
-            result[k] = None
+        data = p.read()
+    result = decode_hostapd_station(data)
     return result
 
 
@@ -287,41 +201,12 @@ def get_survey(interface, path_iw=__DEFAULT_IW_PATH):
         :param interface: interface to change
         :param path_iw: path to iw
 
-        :return dictionary of dictionary
-            {2432: {'noise': '-95 dBm',
-                    'in use': True,
-                    'channel transmit time': '713 ms',
-                    'channel busy time': '9479 ms',
-                    'channel active time': '54259 ms',
-                    'channel receive time': '8279 ms'},
-             2467: {},
-             }
+        :return decoded information from survey
     """
     cmd = "{} dev {} survey dump".format(os.path.join(path_iw, 'iw'), interface)
     with os.popen(cmd) as p:
-        ret = p.read().split('\n')
-    result = dict()
-    freq = None
-    for _l in ret:
-        if 'Survey data' in _l:
-            continue  # skip this line
-        if 'frequency' in _l:
-            # new field
-            freq = int(_l.replace('\t', ' ').split()[1])
-            result[freq] = {'in use': True} if 'in use' in _l else dict()
-            continue
-        if freq is not None:
-            _l = [v.strip() for v in _l.replace('\t', ' ').split(':')]
-            try:
-                k = _l[0]
-                v = _l[1]
-                f = re.findall(r"[-+]?\d*\.\d+|\d+", v)
-                if len(f) > 0:
-                    v = f[0]
-                    v = float(v)
-                result[freq][k] = v
-            except IndexError:
-                pass
+        data = p.read()
+    result = decode_survey(data)
     return result
 
 
