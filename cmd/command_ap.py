@@ -189,10 +189,10 @@ def get_config(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
     """
     cmd = "{} get_config".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI))
     with os.popen(cmd) as p:
-        ret = p.read().split('\n')
-    ret.pop(0)
-    ret = dict([w for w in [v.split('=') for v in ret] if len(w) == 2])
-    return ret
+        result = p.read().split('\n')
+    result.pop(0)  # remove first line (blank line)
+    result = dict([w for w in [v.split('=') for v in ret] if len(w) == 2])
+    return result
 
 
 def get_survey(interface, path_iw=__DEFAULT_IW_PATH):
