@@ -19,6 +19,7 @@ from .ifconfig import decode_ifconfig
 from .iwconfig import decode_iwconfig
 from .station import decode_iw_station, decode_hostapd_status, decode_hostapd_station
 from .survey import decode_survey
+from .scan import decode_scan
 
 
 valid_frequencies = [2412 + i * 5 for i in range(13)]
@@ -43,7 +44,6 @@ def get_xmit(phy_iface='phy0'):
 
 def get_ifconfig(interface, path_ifconfig=__PATH_IFCONFIG):
     cmd = "{} {}".format(os.path.join(path_ifconfig, 'ifconfig'), interface)
-    result = dict()
     with os.popen(cmd) as p:
         ret = decode_ifconfig(p.readlines())
     return ret
@@ -207,6 +207,21 @@ def get_survey(interface, path_iw=__DEFAULT_IW_PATH):
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_survey(data)
+    return result
+
+
+def get_scan(interface, path_iw=__DEFAULT_IW_PATH):
+    """ command  dev <devname> scan dump
+
+        :param interface: interface to change
+        :param path_iw: path to iw
+
+        :return decoded information from scan dump
+    """
+    cmd = "{} dev {} scan dump".format(os.path.join(path_iw, 'iw'), interface)
+    with os.popen(cmd) as p:
+        data = p.read()
+    result = decode_scan(data)
     return result
 
 

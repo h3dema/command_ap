@@ -19,7 +19,9 @@
 """
 import argparse
 import pickle
-import sys
+import os
+import json
+import logging
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
 from http.server import HTTPServer
@@ -28,14 +30,21 @@ from http.server import HTTPServer
 from ..cmd.command_ap import get_iw_info, get_power, set_power, get_iwconfig_info
 from ..cmd.command_ap import get_survey, get_iw_stations
 from ..cmd.command_ap import get_xmit, get_ifconfig
+from ..cmd.command_ap import get_scan
 
 
+LOG = logging.getLogger('REST_SERVER')
 PORT_NUMBER = 8080
 
 
 class myHandler(BaseHTTPRequestHandler):
     """"This class will handles any incoming request from the browser
     """
+    def __init__(self, request, client_address, server):
+        super.__init__(request, client_address, server)
+
+        self.last_rt = dict()  # used in get_mos_client()
+
     @property
     def query(self):
         q = urllib.parse.urlparse(self.path).query
@@ -184,6 +193,47 @@ class myHandler(BaseHTTPRequestHandler):
         except KeyError:
             self.send_error()
 
+    def get_mos_hybrid(self, database_filename='clients.json'):
+        pass
+        # each line: (fr, sbr, plr)
+
+    def get_mos_client(self, database_filename='clients.json'):
+        """
+            read a local file that is filled using an node.js server
+            this server receives connections from the clients, and then stores
+            the values in a local json file
+        """
+        # rename database_file
+        to_send = database_filename + '.send'
+        os.rename(database_filename, to_send)
+        # recreate it
+        os.system('touch {}'.format(database_filename))
+        # read json to send
+        with open(to_send, 'r') as f:
+            data = json.load(f)
+        data_print = json.dumps(data, indent=4)
+        LOG.debug(data_print)
+        # from data, obtain:
+        # * r[t] = reportedBitrate in time [t] / max_bitrate
+        # * srt = not_running_time / (not_running_time + execution_time)
+        # r[t-1] is obtained from a saved variable: self.last_rt[client_ip]
+        ret = []  # each line contains (R_t, R_t1, SR)
+        for d in data:
+            pass
+        try:
+            self.send_dictionary(ret)
+        except KeyError:
+            self.send_error()
+        # delete the json
+        os.remove(to_send)
+
+    def get_scan(self):
+        """ return the result from iw scan dump
+        """
+        iface = self.query.get('iface', [''])[0]
+        aps = get_scan(interface=iface)
+        self.send_dictionary(aps)
+
     def hello(self):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -207,13 +257,16 @@ class myHandler(BaseHTTPRequestHandler):
                             '/get_features': self.get_features,
                             '/get_ifconfig': self.ifconfig,
                             '/get_xmit': self.xmit,
+                            '/get_mos_client': self.get_mos_client,
+                            '/get_mos_hybrid': self.get_mos_hybrid,
+                            '/get_scan': self.get_scan,
                             }
 
-        print("received", self.requestline, 'from', self.address_string())
-        print('path', self.path)
+        LOG.info("received {} from {}".format(self.requestline, self.address_string()))
+        LOG.info('path: {}'.format(self.path))
 
         cmd = urllib.parse.urlparse(self.path).path
-        print(cmd)
+        LOG.info('cmd : {}'.format(cmd))
 
         """Handler for the GET requests"""
         func = function_handler.get(cmd, self.send_error)
@@ -221,12 +274,12 @@ class myHandler(BaseHTTPRequestHandler):
         return
 
 
-def run(port):
+def run(port=8080):
     try:
         """Create a web server and define the handler to manage the
             incoming request"""
         server = HTTPServer(('', port), myHandler)
-        print('Started httpserver on port ', port)
+        LOG.info('Started httpserver on port {}'.format(port))
 
         """Wait forever for incoming htto requests"""
         server.serve_forever()
@@ -242,4 +295,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     run(args.port)
-
