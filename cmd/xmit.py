@@ -7,7 +7,7 @@
     Returns a dictionary with all decoded fields.
 """
 from __future__ import print_function
-from os.path import exists, basename
+from os.path import exists
 
 
 # contains the title of the lines with data (4 columns each)

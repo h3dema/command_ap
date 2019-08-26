@@ -7,5 +7,5 @@
 
 
 def decode_scan(data):
-
+    print(data)
     return None

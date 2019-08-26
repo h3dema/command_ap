@@ -14,12 +14,12 @@ import argparse
 import re
 import glob
 
-from .xmit import decode_xmit
-from .ifconfig import decode_ifconfig
-from .iwconfig import decode_iwconfig
-from .station import decode_iw_station, decode_hostapd_status, decode_hostapd_station
-from .survey import decode_survey
-from .scan import decode_scan
+from cmd.xmit import decode_xmit
+from cmd.ifconfig import decode_ifconfig
+from cmd.iwconfig import decode_iwconfig
+from cmd.station import decode_iw_station, decode_hostapd_status, decode_hostapd_station
+from cmd.survey import decode_survey
+from cmd.scan import decode_scan
 
 
 valid_frequencies = [2412 + i * 5 for i in range(13)]
@@ -27,7 +27,7 @@ __HOSTAPD_CLI = "hostapd_cli"
 __DEFAULT_HOSTAPD_CLI_PATH = '/usr/sbin/'
 __DEFAULT_IW_PATH = '/sbin/'
 __DEFAULT_IWCONFIG_PATH = '/sbin'
-__PATH_IFCONFIG='/sbin'
+__PATH_IFCONFIG = '/sbin'
 
 
 def get_xmit(phy_iface='phy0'):
@@ -69,12 +69,17 @@ def get_status(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
     return ret
 
 
-def change_channel(new_channel, count=1, path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
+def change_channel(interface, new_channel, count=1, ht_type=None, path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
+    # TODO: add other optional parameters
+    #       [sec_channel_offset=] [center_freq1=] [center_freq2=] [bandwidth=] [blocktx]
     assert new_channel > 0 and new_channel <= len(valid_frequencies), "{} not in valid channels".format(new_channel)
     frequency = valid_frequencies[new_channel - 1]
-    params = "chan_switch {} {}".format(count, frequency)
+    params = "-i {} chan_switch {} {}".format(interface, count, frequency)
+    if ht_type in ['ht', 'vht']:
+        params += ' ' + ht_type
     cmd = "{} {}".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI), params)
     with os.popen(cmd) as p:
+        # notice that if you to change to the current channel, the program returns FAIL
         ret = p.read().find('OK') >= 0
     return ret
 
@@ -149,7 +154,7 @@ def get_power(interface, path_iw=__DEFAULT_IW_PATH, path_iwconfig=__DEFAULT_IWCO
     return txpower
 
 
-def set_power(interface, new_power, path_iw=__DEFAULT_IW_PATH):
+def set_iw_power(interface, new_power, path_iw=__DEFAULT_IW_PATH):
     """ command dev <devname> set txpower <auto|fixed|limit> [<tx power in mBm>]
         NOTE: this module needs to run as superuser to set the power
 
@@ -191,11 +196,11 @@ def get_config(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
     with os.popen(cmd) as p:
         result = p.read().split('\n')
     result.pop(0)  # remove first line (blank line)
-    result = dict([w for w in [v.split('=') for v in ret] if len(w) == 2])
+    result = dict([w for w in [v.split('=') for v in result] if len(w) == 2])
     return result
 
 
-def get_survey(interface, path_iw=__DEFAULT_IW_PATH):
+def get_iw_survey(interface, path_iw=__DEFAULT_IW_PATH):
     """ command  dev <devname> survey dump
 
         :param interface: interface to change
@@ -210,7 +215,7 @@ def get_survey(interface, path_iw=__DEFAULT_IW_PATH):
     return result
 
 
-def get_scan(interface, path_iw=__DEFAULT_IW_PATH):
+def get_iw_scan(interface, path_iw=__DEFAULT_IW_PATH):
     """ command  dev <devname> scan dump
 
         :param interface: interface to change
@@ -218,11 +223,40 @@ def get_scan(interface, path_iw=__DEFAULT_IW_PATH):
 
         :return decoded information from scan dump
     """
-    cmd = "{} dev {} scan dump".format(os.path.join(path_iw, 'iw'), interface)
+    cmd = "sudo {} dev {} scan dump".format(os.path.join(path_iw, 'iw'), interface)
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_scan(data)
     return result
+
+
+def get_iw_scan_mac(interface, path_iw=__DEFAULT_IW_PATH):
+    """ command  dev <devname> scan dump
+
+        :param interface: interface to scan
+        :param path_iw: path to iw
+
+        :return decoded information from scan dump, only the detected MACs
+    """
+    cmd = "sudo {} dev {} scan dump".format(os.path.join(path_iw, 'iw'), interface)
+    with os.popen(cmd) as p:
+        data = p.read()
+    result = decode_scan(data)
+    return result
+
+
+def trigger_scan(interface, path_iw=__DEFAULT_IW_PATH):
+    """ command  dev <devname> scan trigger
+        it is necessary to call this method before call any method with 'scan',
+        it forces the AP to scan all valid channels, and populate the statistics
+
+        :param interface: interface to scan
+        :param path_iw: path to iw
+
+        :return: nothing
+    """
+    cmd = "sudo {} dev {} scan trigger".format(os.path.join(path_iw, 'iw'), interface)
+    os.system(cmd)
 
 
 if __name__ == '__main__':
@@ -302,7 +336,7 @@ if __name__ == '__main__':
             except ValueError:
                 new_power = None
         if new_power is not None:
-            set_power(args.iface, new_power=new_power, path_iw=args.path_iw)
+            set_iw_power(args.iface, new_power=new_power, path_iw=args.path_iw)
         if args.verbose:
             print('Power: {}'.format(get_power(interface=args.iface, path_iw=args.path_iw)))
 
@@ -312,7 +346,7 @@ if __name__ == '__main__':
     # print(get_config(path_hostapd_cli=args.path_hostapd_cli))
 
     if args.survey:
-        ret = get_survey(args.iface)
+        ret = get_iw_survey(args.iface)
         for k in ret:
             print("Channel: {}".format(k))
             for w in ret[k]:

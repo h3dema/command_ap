@@ -4,6 +4,7 @@
     convert the output of iw dev station dump into a dictionary
 
 """
+import re
 
 
 def decode_survey(data):
