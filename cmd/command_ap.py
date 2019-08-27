@@ -19,13 +19,14 @@ from cmd.ifconfig import decode_ifconfig
 from cmd.iwconfig import decode_iwconfig
 from cmd.station import decode_iw_station, decode_hostapd_status, decode_hostapd_station
 from cmd.survey import decode_survey
-from cmd.scan import decode_scan, decode_scan_mac
+from cmd.scan import decode_scan, decode_scan_mac, decode_scan_basic
 
 
 valid_frequencies = [2412 + i * 5 for i in range(13)]
 __HOSTAPD_CLI = "hostapd_cli"
 __DEFAULT_HOSTAPD_CLI_PATH = '/usr/sbin/'
-__DEFAULT_IW_PATH = '/sbin/'
+# __DEFAULT_IW_PATH = '/sbin/'
+__DEFAULT_IW_PATH = '/home/winet/command_ap/iw'
 __DEFAULT_IWCONFIG_PATH = '/sbin'
 __PATH_IFCONFIG = '/sbin'
 
@@ -215,7 +216,7 @@ def get_iw_survey(interface, path_iw=__DEFAULT_IW_PATH):
     return result
 
 
-def get_iw_scan(interface, path_iw=__DEFAULT_IW_PATH):
+def get_iw_scan_full(interface, path_iw=__DEFAULT_IW_PATH):
     """ command  dev <devname> scan dump
 
         :param interface: interface to change
@@ -239,10 +240,24 @@ def get_iw_scan_mac(interface, path_iw=__DEFAULT_IW_PATH):
         :return decoded information from scan dump, only the detected MACs
     """
     cmd = "sudo {} dev {} scan dump 2>&1".format(os.path.join(path_iw, 'iw'), interface)
-    print(">>", cmd)
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_scan_mac(data)
+    return result
+
+
+def get_iw_scan(interface, path_iw=__DEFAULT_IW_PATH):
+    """ command  dev <devname> scan dump
+
+        :param interface: interface to scan
+        :param path_iw: path to iw
+
+        :return decoded information from scan dump, only the detected MACs
+    """
+    cmd = "sudo {} dev {} scan dump 2>&1".format(os.path.join(path_iw, 'iw'), interface)
+    with os.popen(cmd) as p:
+        data = p.read()
+    result = decode_scan_basic(data)
     return result
 
 

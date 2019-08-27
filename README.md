@@ -35,3 +35,15 @@ You will need to change the following fields in the file:
 * __channel__ set the channel number from 1 to 11 (in Brazil)
 * __ssid__ defines the wifi network name
 * __wpa_password__ is a string that defines the wifi network passphrase
+
+# Requisites
+
+* iw: The command uses __iw__ to get and set some parameters in the wifi interface. It was tested using __iw__ version 4.9 and 5.3 on Ubuntu. Notice that this tool comes with different versions depending on the Ubuntu's own version. Thus we recommend download and compile it from the source.
+
+```
+git clone git://git.kernel.org/pub/scm/linux/kernel/git/jberg/iw.git
+cd iw
+make
+sudo make install
+```
+

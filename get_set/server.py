@@ -28,11 +28,12 @@ import pickle
 import os
 import json
 import logging
+
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
 from http.server import HTTPServer
 
-# add path to sys, in order to access the commands
+# command processed by the AP
 from cmd.command_ap import get_ifconfig
 from cmd.command_ap import get_iw_info
 from cmd.command_ap import get_iwconfig_info
@@ -231,9 +232,10 @@ class myHandler(BaseHTTPRequestHandler):
         """
             :return: dictionary
                 {2432: {'channel busy time': 394.0, 'channel receive time': 285.0, 'channel transmit time': 81.0, 'noise': 81.0, 'channel active time': 1104.0},
-                 2467: {},
                  2437: {'in use': True, 'channel receive time': 1073537372.0, 'noise': 80.0, 'channel busy time': 1163590333.0, 'channel transmit time': 60790348.0, 'channel active time': 3628159621.0},
-                 2472: {}, 2442: {'channel busy time': 682.0, 'channel receive time': 336.0, 'channel transmit time': 310.0, 'noise': 81.0, 'channel active time': 1121.0}, 2412: {'channel busy time': 722824.0, 'channel receive time': 505677.0, 'channel transmit time': 204390.0, 'noise': 80.0, 'channel active time': 1681119.0}, 2447: {'channel busy time': 194.0, 'channel receive time': 135.0, 'channel transmit time': 27.0, 'noise': 81.0, 'channel active time': 1121.0}, 2417: {'channel busy time': 351.0, 'channel receive time': 316.0, 'channel transmit time': 19.0, 'noise': 80.0, 'channel active time': 1200.0}, 2452: {'channel busy time': 242.0, 'channel receive time': 167.0, 'channel transmit time': 27.0, 'noise': 80.0, 'channel active time': 1127.0}, 2422: {'channel busy time': 240.0, 'channel receive time': 189.0, 'channel transmit time': 17.0, 'noise': 80.0, 'channel active time': 1165.0}, 2457: {'channel busy time': 458.0, 'channel receive time': 419.0, 'channel transmit time': 19.0, 'noise': 80.0, 'channel active time': 1110.0}, 2427: {'channel busy time': 823.0, 'channel receive time': 193.0, 'channel transmit time': 575.0, 'noise': 81.0, 'channel active time': 3462.0}, 2462: {'channel busy time': 2614.0, 'channel receive time': 1448.0, 'channel transmit time': 1085.0, 'noise': 80.0, 'channel active time': 3320.0}}
+                 2442: {'channel busy time': 682.0, 'channel receive time': 336.0, 'channel transmit time': 310.0, 'noise': 81.0, 'channel active time': 1121.0}, 2412: {'channel busy time': 722824.0, 'channel receive time': 505677.0, 'channel transmit time': 204390.0, 'noise': 80.0, 'channel active time': 1681119.0}, 2447: {'channel busy time': 194.0, 'channel receive time': 135.0, 'channel transmit time': 27.0, 'noise': 81.0, 'channel active time': 1121.0}, 2417: {'channel busy time': 351.0, 'channel receive time': 316.0, 'channel transmit time': 19.0, 'noise': 80.0, 'channel active time': 1200.0}, 2452: {'channel busy time': 242.0, 'channel receive time': 167.0, 'channel transmit time': 27.0, 'noise': 80.0, 'channel active time': 1127.0}, 2422: {'channel busy time': 240.0, 'channel receive time': 189.0, 'channel transmit time': 17.0, 'noise': 80.0, 'channel active time': 1165.0}, 2457: {'channel busy time': 458.0, 'channel receive time': 419.0, 'channel transmit time': 19.0, 'noise': 80.0, 'channel active time': 1110.0}, 2427: {'channel busy time': 823.0, 'channel receive time': 193.0, 'channel transmit time': 575.0, 'noise': 81.0, 'channel active time': 3462.0}, 2462: {'channel busy time': 2614.0, 'channel receive time': 1448.0, 'channel transmit time': 1085.0, 'noise': 80.0, 'channel active time': 3320.0}}
+                 2467: {},
+                 2472: {},
 
         """
         iface = self.query.get('iface', [''])[0]
@@ -320,7 +322,23 @@ class myHandler(BaseHTTPRequestHandler):
         os.remove(to_send)
 
     def get_scan(self):
-        """ return the result from iw scan dump
+        """ returns the partial results from iw scan dump
+
+            {'50:c7:bf:3b:db:37': {'channel': '1',
+                                   'SSID': 'LAC',
+                                   'TSF': '0d, 05:19:27',
+                                   'last seen': 104,
+                                   'freq': 2412,
+                                   'signal': -54.0,
+                                   'beacon interval': 100},
+             '84:b8:02:44:07:d2': {'channel': '1',
+                                   'SSID': 'DCC-usuarios',
+                                   'TSF': '27d, 03:24:26',
+                                   'last seen': 1024,
+                                   'freq': 2412,
+                                   'signal': -58.0,
+                                   'beacon interval': 102}
+             }
         """
         iface = self.query.get('iface', [''])[0]
         trigger_scan(interface=iface)
@@ -329,6 +347,7 @@ class myHandler(BaseHTTPRequestHandler):
 
     def get_scan_mac(self):
         """ return the result from iw scan dump
+            :return: List[str] each entry is a detected mac
         """
         iface = self.query.get('iface', [''])[0]
         trigger_scan(interface=iface)
