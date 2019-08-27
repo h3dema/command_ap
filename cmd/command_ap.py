@@ -25,8 +25,7 @@ from cmd.scan import decode_scan, decode_scan_mac, decode_scan_basic
 valid_frequencies = [2412 + i * 5 for i in range(13)]
 __HOSTAPD_CLI = "hostapd_cli"
 __DEFAULT_HOSTAPD_CLI_PATH = '/usr/sbin/'
-# __DEFAULT_IW_PATH = '/sbin/'
-__DEFAULT_IW_PATH = '/home/winet/command_ap/iw'
+__DEFAULT_IW_PATH = '/sbin/'
 __DEFAULT_IWCONFIG_PATH = '/sbin'
 __PATH_IFCONFIG = '/sbin'
 
