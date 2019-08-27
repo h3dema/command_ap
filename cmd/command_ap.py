@@ -19,7 +19,7 @@ from cmd.ifconfig import decode_ifconfig
 from cmd.iwconfig import decode_iwconfig
 from cmd.station import decode_iw_station, decode_hostapd_status, decode_hostapd_station
 from cmd.survey import decode_survey
-from cmd.scan import decode_scan
+from cmd.scan import decode_scan, decode_scan_mac
 
 
 valid_frequencies = [2412 + i * 5 for i in range(13)]
@@ -238,10 +238,11 @@ def get_iw_scan_mac(interface, path_iw=__DEFAULT_IW_PATH):
 
         :return decoded information from scan dump, only the detected MACs
     """
-    cmd = "sudo {} dev {} scan dump".format(os.path.join(path_iw, 'iw'), interface)
+    cmd = "sudo {} dev {} scan dump 2>&1".format(os.path.join(path_iw, 'iw'), interface)
+    print(">>", cmd)
     with os.popen(cmd) as p:
         data = p.read()
-    result = decode_scan(data)
+    result = decode_scan_mac(data)
     return result
 
 
