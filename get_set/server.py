@@ -429,10 +429,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Receive commands to the AP.')
     parser.add_argument('--port', type=int, default=8080, help='Set the server port')
     parser.add_argument('--debug', action='store_true', help='set logging level to debug')
+    parser.add_argument('--collect-firefox-data', action='store_true', help='creates a local server that receives POSTs from the web clients')
     args = parser.parse_args()
 
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
+
+    if args.collect_firefox_data:
+        # create thread to receive POSTs from the clients containing
+        pass
 
     # run server forever
     run(args.port)
