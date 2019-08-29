@@ -49,8 +49,15 @@ from cmd.command_ap import get_iw_scan_mac
 from cmd.command_ap import get_xmit
 from cmd.command_ap import change_channel
 
+from get_set.server_ffox import SrvPosts
+
+
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger('REST_SERVER')
+
+# creates a global var 'httpd' that receives the httpd handle that runs in the thread,
+# so we can stop it when CTRL-C is hit
+httpd = None
 
 
 class myHandler(BaseHTTPRequestHandler):
@@ -415,7 +422,7 @@ def run(port=8080):
         """Create a web server and define the handler to manage the
             incoming request"""
         server = HTTPServer(('', port), myHandler)
-        LOG.info('Started httpserver on port {}'.format(port))
+        LOG.info('Started httpserver on port {} to command Wi-Fi'.format(port))
 
         """Wait forever for incoming htto requests"""
         server.serve_forever()
@@ -423,24 +430,9 @@ def run(port=8080):
     except KeyboardInterrupt:
         print('Ctrl-C received, shutting down the web server')
         server.socket.close()
-
-
-class SrvPosts(BaseHTTPRequestHandler):
-    """ receives posts from the client (firefox), and saves the data into a json file
-    """
-    def _set_headers(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-
-    def do_POST(self):
-        # get the data, and save it into a JSON file
-        content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
-        post_data = self.rfile.read(content_length)
-        LOG.debug(post_data)
-        # return OK to the client
-        self._set_headers()
-        self.wfile.write("<html><body><h1>POST!</h1></body></html>")
+        # stops the other server if the execution ever reaches this point
+        if httpd is not None:
+            httpd.socket.close()
 
 
 def collect(port):
@@ -448,9 +440,13 @@ def collect(port):
         save the BODY as JSON in a file
     """
     server_address = ('', port)
-    LOG.info('Starting httpd @ {}...'.format(port))
+    LOG.info('Starting httpd @ {}... for the firefox clients'.format(port))
+    global httpd
     httpd = HTTPServer(server_address, SrvPosts)
-    httpd.serve_forever()
+    try:
+        httpd.serve_forever()
+    except ValueError:
+        pass
 
 
 if __name__ == "__main__":
@@ -467,9 +463,8 @@ if __name__ == "__main__":
 
     if args.collect_firefox_data:
         # create thread to receive POSTs from the clients containing
-        t = Thread(target=collect, args=(args.port_firefox))
+        t = Thread(target=collect, args=(args.port_firefox, ))
         t.start()
 
     # run server forever
     run(args.port)
-    t.stop()  # stops if the execution ever reaches this point
