@@ -28,6 +28,7 @@ import pickle
 import os
 import json
 import logging
+from threading import Thread
 
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
@@ -50,7 +51,6 @@ from cmd.command_ap import change_channel
 
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger('REST_SERVER')
-PORT_NUMBER = 8080
 
 
 class myHandler(BaseHTTPRequestHandler):
@@ -425,11 +425,41 @@ def run(port=8080):
         server.socket.close()
 
 
+class SrvPosts(BaseHTTPRequestHandler):
+    """ receives posts from the client (firefox), and saves the data into a json file
+    """
+    def _set_headers(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+    def do_POST(self):
+        # get the data, and save it into a JSON file
+        content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
+        post_data = self.rfile.read(content_length)
+        LOG.debug(post_data)
+        # return OK to the client
+        self._set_headers()
+        self.wfile.write("<html><body><h1>POST!</h1></body></html>")
+
+
+def collect(port):
+    """ creates an HTTP server that receives POST requests from the client
+        save the BODY as JSON in a file
+    """
+    server_address = ('', port)
+    LOG.info('Starting httpd @ {}...'.format(port))
+    httpd = HTTPServer(server_address, SrvPosts)
+    httpd.serve_forever()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Receive commands to the AP.')
     parser.add_argument('--port', type=int, default=8080, help='Set the server port')
     parser.add_argument('--debug', action='store_true', help='set logging level to debug')
+
     parser.add_argument('--collect-firefox-data', action='store_true', help='creates a local server that receives POSTs from the web clients')
+    parser.add_argument('--port-firefox', type=int, default=8081, help='Set the server port to collect data from the firefox client')
     args = parser.parse_args()
 
     if args.debug:
@@ -437,7 +467,9 @@ if __name__ == "__main__":
 
     if args.collect_firefox_data:
         # create thread to receive POSTs from the clients containing
-        pass
+        t = Thread(target=collect, args=(args.port_firefox))
+        t.start()
 
     # run server forever
     run(args.port)
+    t.stop()  # stops if the execution ever reaches this point
