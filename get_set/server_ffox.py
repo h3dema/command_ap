@@ -31,7 +31,10 @@
 """
 import logging
 import datetime
+import threading
+
 import numpy as np
+
 from http.server import BaseHTTPRequestHandler
 import urllib.parse
 
@@ -79,6 +82,33 @@ map_ip_to_sta = {'192.168.0.11': 'cloud',
                  }
 
 
+class FirefoxDataMemory (object):
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.__data = []
+
+    def push(self, data):
+        self.lock.acquire()
+        try:
+            self.__data.append(data)
+        finally:
+            self.lock.release()
+
+    def pop(self):
+        ret = []
+        self.lock.acquire()
+        try:
+            ret = self.__data
+            self.__data = []
+        finally:
+            self.lock.release()
+        return ret
+
+
+# saves the data retrieved from clients
+ffox_memory = FirefoxDataMemory()
+
+
 class SrvPosts(BaseHTTPRequestHandler):
     """ receives posts from the client (firefox), and saves the data into a json file
     """
@@ -109,7 +139,4 @@ class SrvPosts(BaseHTTPRequestHandler):
         ip = self.client_address[0]
         data['host'] = ip if ip not in map_ip_to_sta else map_ip_to_sta[ip]
         LOG.info(data)
-        # return OK to the client
-        # self._set_headers()
-        # self.wfile.write("<html><body><h1>POST!</h1></body></html>")
-
+        ffox_memory.push(data)

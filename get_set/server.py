@@ -50,6 +50,7 @@ from cmd.command_ap import get_xmit
 from cmd.command_ap import change_channel
 
 from get_set.server_ffox import SrvPosts
+from get_set.server_ffox import ffox_memory
 
 
 logging.basicConfig(level=logging.INFO)
@@ -294,26 +295,21 @@ class myHandler(BaseHTTPRequestHandler):
         except KeyError:
             self.send_error()
 
-    def get_mos_hybrid(self, database_filename='clients.json'):
-        pass
+    def get_mos_hybrid(self):
+        # get from memory
+        data = ffox_memory.pop()
+        LOG.debug(data)
         # each line: (fr, sbr, plr)
 
-    def get_mos_client(self, database_filename='clients.json'):
+    def get_mos_client(self):
         """
-            read a local file that is filled using an node.js server
+            read from local memory is filled using an node.js server
             this server receives connections from the clients, and then stores
             the values in a local json file
         """
-        # rename database_file
-        to_send = database_filename + '.send'
-        os.rename(database_filename, to_send)
-        # recreate it
-        os.system('touch {}'.format(database_filename))
-        # read json to send
-        with open(to_send, 'r') as f:
-            data = json.load(f)
-        data_print = json.dumps(data, indent=4)
-        LOG.debug(data_print)
+        # get from memory
+        data = ffox_memory.pop()
+        LOG.debug(data)
         # from data, obtain:
         # * r[t] = reportedBitrate in time [t] / max_bitrate
         # * srt = not_running_time / (not_running_time + execution_time)
@@ -325,8 +321,6 @@ class myHandler(BaseHTTPRequestHandler):
             self.send_dictionary(ret)
         except KeyError:
             self.send_error()
-        # delete the json
-        os.remove(to_send)
 
     def get_scan(self):
         """ returns the partial results from iw scan dump
