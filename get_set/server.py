@@ -316,6 +316,16 @@ class myHandler(BaseHTTPRequestHandler):
         # * srt = not_running_time / (not_running_time + execution_time)
         # r[t-1] is obtained from a saved variable: self.last_rt[client_ip]
         ret = []  # each line contains (R_t, R_t1, SR)
+        for sta in stations:
+            if sta in self.last_rt:
+                # obtain the parameters
+                pass
+            else:
+                # sta is not present
+                # * check if there is more than one entry for this station
+                # 1) yes: compute differences
+                # 2) no:
+                pass
         try:
             self.send_dictionary(ret)
         except KeyError:
@@ -396,7 +406,7 @@ class myHandler(BaseHTTPRequestHandler):
                             '/get_mos_client': self.get_mos_client,
                             '/get_mos_hybrid': self.get_mos_hybrid,
                             }
-
+        print("qui")
         LOG.info("received {} from {}".format(self.requestline, self.address_string()))
         LOG.debug('path: {}'.format(self.path))
 
@@ -406,7 +416,6 @@ class myHandler(BaseHTTPRequestHandler):
         """Handler for the GET requests"""
         func = function_handler.get(cmd, self.send_error)
         func()
-
         return
 
 
@@ -448,11 +457,13 @@ if __name__ == "__main__":
     parser.add_argument('--debug', action='store_true', help='set logging level to debug')
 
     parser.add_argument('--collect-firefox-data', action='store_true', help='creates a local server that receives POSTs from the web clients')
-	    parser.add_argument('--port-firefox', type=int, default=8081, help='Set the server port to collect data from the firefox client')
+    parser.add_argument('--port-firefox', type=int, default=8081, help='Set the server port to collect data from the firefox client')
     args = parser.parse_args()
 
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
+        LOG.setLevel(logging.DEBUG)
+        LOG.info("Debug activated")
 
     if args.collect_firefox_data:
         # create thread to receive POSTs from the clients containing
