@@ -34,7 +34,7 @@ def get_xmit(phy_iface='phy0'):
     # TODO: find if it is ath9k, ath10k....
     path_to_phy = os.path.join('/sys/kernel/debug/ieee80211', phy_iface)
     try:
-        dir_athk = glob.glob(os.path.join(path_to_phy, 'ath*k'))[0]
+        dir_athk = glob.glob(os.path.join(path_to_phy, 'ath*'))[0]
     except IndexError:
         return dict()  # error, didn't find ath9k or ath10k
     path_to_xmit = os.path.join(path_to_phy, dir_athk, 'xmit')

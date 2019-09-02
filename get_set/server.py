@@ -26,8 +26,11 @@
 import argparse
 import pickle
 import logging
+import os
+import numpy as np
 from threading import Thread
 from datetime import datetime
+import json
 
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
@@ -46,6 +49,7 @@ from cmd.command_ap import get_iw_survey
 from cmd.command_ap import get_iw_scan
 from cmd.command_ap import get_iw_scan_mac
 from cmd.command_ap import get_xmit
+from cmd.command_ap import get_phy_with_wlan
 from cmd.command_ap import change_channel
 
 from get_set.server_ffox import SrvPosts
@@ -60,6 +64,10 @@ LOG = logging.getLogger('REST_SERVER')
 httpd = None
 last_rt = dict()  # save data from AP
 last_tx_bytes = None  # save last read tx_bytes in MOS AP
+last_ampdu = None
+MAX_REPORTED_BITRATE = 20000.0
+MAXIMUM_TX_BITRATE = 54.0
+MAX_TX_BYTES_WIFI = MAXIMUM_TX_BITRATE * 1024 * 1024
 
 
 class myHandler(BaseHTTPRequestHandler):
@@ -178,28 +186,6 @@ class myHandler(BaseHTTPRequestHandler):
         phy_iface = self.query.get('phy', ['phy0'])[0]
         r = get_xmit(phy_iface)
         self.send_dictionary(r)
-
-    def fill_feature_results(self, survey, station, k, stations, iface):
-        """ function that returns the features of a station.
-        """
-        results = {'num_stations': len(stations),
-                   'tx_power': get_power(interface=iface),
-                   'cat': survey[k].get('channel active time', ''),
-                   'cbt': survey[k].get('channel busy time', ''),
-                   'crt': survey[k].get('channel receive time', ''),
-                   'ctt': survey[k].get('channel transmit time', ''),
-                   'avg_signal': station['signal avg'],
-                   'txf': station['tx failed'],
-                   'txr': station['tx retries'],
-                   'txp': station['tx packets'],
-                   'txb': station['tx bytes'],
-                   'rxdrop': station['rx drop misc'],
-                   'rxb': station['rx bytes'],
-                   'rxp': station['rx packets'],
-                   'tx_bitrate': station['tx bitrate'],
-                   'rx_bitrate': station['rx bitrate'],
-                   }
-        return results
 
     def get_stations(self):
         """ process /num_stations
@@ -322,9 +308,9 @@ class myHandler(BaseHTTPRequestHandler):
                             '/get_scan': self.get_scan,
                             '/get_scan_mac': self.get_scan_mac,
                             '/get_mos_client': self.get_mos_client,
+                            '/get_mos_ap': self.get_mos_ap,
                             '/get_mos_hybrid': self.get_mos_hybrid,
                             }
-        print("qui")
         LOG.info("received {} from {}".format(self.requestline, self.address_string()))
         LOG.debug('path: {}'.format(self.path))
 
@@ -341,6 +327,28 @@ class myHandler(BaseHTTPRequestHandler):
     #  this is specific to the QoS experiments (Marcos, Gilson, Henrique)
     #
     # ********************************************************
+    def fill_feature_results(self, survey, station, k, stations, iface):
+        """ function that returns the features of a station.
+        """
+        results = {'num_stations': len(stations),
+                   'tx_power': get_power(interface=iface),
+                   'cat': survey[k].get('channel active time', ''),
+                   'cbt': survey[k].get('channel busy time', ''),
+                   'crt': survey[k].get('channel receive time', ''),
+                   'ctt': survey[k].get('channel transmit time', ''),
+                   'avg_signal': station['signal avg'],
+                   'txf': station['tx failed'],
+                   'txr': station['tx retries'],
+                   'txp': station['tx packets'],
+                   'txb': station['tx bytes'],
+                   'rxdrop': station['rx drop misc'],
+                   'rxb': station['rx bytes'],
+                   'rxp': station['rx packets'],
+                   'tx_bitrate': station['tx bitrate'],
+                   'rx_bitrate': station['rx bitrate'],
+                   }
+        return results
+
     def get_features(self):
         """ process /get_features
 
@@ -392,6 +400,13 @@ class myHandler(BaseHTTPRequestHandler):
     #
     # ********************************************************
     def get_mos_hybrid(self):
+        """
+            : return: [[timestamp, FR, frame_loss, SBR, PLR], ...]
+        """
+        iface = self.query.get('iface', [''])[0]
+        sta_mac_mapping_str = self.query.get('macs', [''])[0]
+        sta_mac_mapping = json.loads(sta_mac_mapping_str.replace("'", "\""))
+        # print(sta_mac_mapping)
         # get from memory
         data = ffox_memory.pop()
         LOG.debug(data)
@@ -427,8 +442,6 @@ class myHandler(BaseHTTPRequestHandler):
                 last_data = actual_data
                 break
             last_rt[sta] = last_data  # save for another iteration
-        result = []  # contains the data to build the MOS
-        if len(ret) == 0:
         """
         * loss rate (PLR)
             packets = | rx_packets[t] - rx_packets[t-1] |
@@ -436,39 +449,64 @@ class myHandler(BaseHTTPRequestHandler):
 
         * send bit rate (SBR): SBR = tx_bitrate / maximum tx_bitrate
         """
-
+        stations = get_iw_stations(interface=iface)
+        sta_macs = stations.keys()
+        ret2 = dict()
+        for k in sta_macs:
+            sta = stations[k]
+            h = sta_mac_mapping.get(k, '')
+            ret2[h] = [sta['tx bitrate'] / MAXIMUM_TX_BITRATE,  # SBR
+                       sta['rx drop misc'] / (sta['rx packets'] + sta['rx drop misc']),  # PLR
+                       ]
+        # join ret and ret2
+        print('ret', ret)
+        print('ret2', ret2)
+        result = []  # contains the data to build the MOS
+        for r in ret:
+            print(r)
+            result.append(r[1:] + ret2[r[0]])
+        print(result)
         try:
             self.send_dictionary(result)
         except KeyError:
             self.send_error()
 
-
     def get_mos_ap(self):
-        """ :return: list[parameter], where parameters = [num_stations, BER, AMPDU, traffic_load]
+        """ :return: [num_stations, BER, AMPDU, traffic_load]
                      needed to compute the MOS_AP
         """
         iface = self.query.get('iface', [''])[0]
-
         #  number of competing stations: performance of the wireless network degrades withincreasing number of users,
         num_stations = len(get_iw_stations(interface=iface))
 
         # Bit Error Rate (BER): variation of the Bit Error Rate (BER) that can cause the MAC frame to be received with errors and trigger retransmissions that canimpact the overall performances of the system2.
         phy_iface = get_phy_with_wlan(interface=iface)
         r = get_xmit(phy_iface)
-        tx_failed = np.sum([r[k] for k in r if 'TX-Failed' in k])
-        tx_pkts = np.sum([r[k] for k in r if 'TX-Pkts-All' in k])
+        tx_failed = np.sum([float(r[k]) for k in r if 'TX-Failed' in k])
+        tx_pkts = np.sum([float(r[k]) for k in r if 'TX-Pkts-All' in k])
         # 'FER' = 'txf_detrend' / ('txf_detrend' + 'txp_detrend')
-        try:
-            FER = tx_failed / (tx_failed + tx_pkts)
-        except ZeroDivisionError:
+        denom = tx_failed + tx_pkts
+        if denom != 0.0:
+            FER = tx_failed / denom
+        else:
             FER = 0
-        BER = FER # !!!!
+        BER = FER  # !!!!
 
         # frame aggregation: A-MPDU (MAC Protocol Data Unit) aggregation, allows many MAC frames to combine into one larger aggregated frame3.
-        AMPDU = np.sum([r[k] for k in r if 'AMPDUs Completed' in k])
+        global last_ampdu
+        curr_ampdu = np.sum([float(r[k]) for k in r if 'AMPDUs Completed' in k])
+        if last_ampdu is None:
+            AMPDU = 0
+        else:
+            AMPDU = curr_ampdu - last_ampdu
+        last_ampdu = curr_ampdu
 
         # traffic load: percentage of traffic over the maximum throughput of the interface
-        tx_bytes = get_ifconfig(interface=iface)[tx_bytes]
+        try:
+            tx_bytes = float(get_ifconfig(interface=iface)['tx_bytes'])
+        except ValueError:
+            tx_bytes = 0
+        global last_tx_bytes
         if last_tx_bytes is None:
             traffic_load = 0
         else:
@@ -476,11 +514,11 @@ class myHandler(BaseHTTPRequestHandler):
         last_tx_bytes = tx_bytes
 
         result = [num_stations, BER, AMPDU, traffic_load]
+        LOG.debug("num_stations:{} BER:{} AMPDU:{} traffic_load:{}".format(num_stations, BER, AMPDU, traffic_load))
         try:
             self.send_dictionary(result)
         except KeyError:
             self.send_error()
-
 
     def get_mos_client(self):
         """
@@ -499,7 +537,6 @@ class myHandler(BaseHTTPRequestHandler):
         for sta in stations:
             # get data to process
             sta_data = [d for d in data if d['host'] == sta and 'playing_time' in d]
-            # print(sta_data)
             if len(sta_data) == 0:
                 # get next data
                 continue
@@ -522,14 +559,15 @@ class myHandler(BaseHTTPRequestHandler):
                     srt = not_running / interval
                 else:
                     srt = 0
-                rt_1 = last_data.get('calculatedBitrate', 0) / last_data.get('reportedBitrate')
-                rt = actual_data.get('calculatedBitrate', 0) / actual_data.get('reportedBitrate')
+                rt_1 = last_data.get('reportedBitrate', 0) / MAX_REPORTED_BITRATE
+                rt = actual_data.get('reportedBitrate', 0) / MAX_REPORTED_BITRATE
                 # print([rt, rt_1, srt])
                 ret.append([rt, rt_1, srt, sta])
                 last_data = actual_data
                 break
 
             last_rt[sta] = last_data  # save for another iteration
+        LOG.debug(ret)
         try:
             self.send_dictionary(ret)
         except KeyError:
@@ -569,23 +607,28 @@ def collect(port):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Receive commands to the AP.')
-    parser.add_argument('--port', type=int, default=8080, help='Set the server port')
-    parser.add_argument('--debug', action='store_true', help='set logging level to debug')
+    # check if is root
+    if os.geteuid() != 0:
+        print("User is not root.")
+        print("Run script with sudo")
+    else:
+        parser = argparse.ArgumentParser(description='Receive commands to the AP.')
+        parser.add_argument('--port', type=int, default=8080, help='Set the server port')
+        parser.add_argument('--debug', action='store_true', help='set logging level to debug')
 
-    parser.add_argument('--collect-firefox-data', action='store_true', help='creates a local server that receives POSTs from the web clients')
-    parser.add_argument('--port-firefox', type=int, default=8081, help='Set the server port to collect data from the firefox client')
-    args = parser.parse_args()
+        parser.add_argument('--collect-firefox-data', action='store_true', help='creates a local server that receives POSTs from the web clients')
+        parser.add_argument('--port-firefox', type=int, default=8081, help='Set the server port to collect data from the firefox client')
+        args = parser.parse_args()
 
-    if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
-        LOG.setLevel(logging.DEBUG)
-        LOG.info("Debug activated")
+        if args.debug:
+            logging.basicConfig(level=logging.DEBUG)
+            LOG.setLevel(logging.DEBUG)
+            LOG.info("Debug activated")
 
-    if args.collect_firefox_data:
-        # create thread to receive POSTs from the clients containing
-        t = Thread(target=collect, args=(args.port_firefox, ))
-        t.start()
+        if args.collect_firefox_data:
+            # create thread to receive POSTs from the clients containing
+            t = Thread(target=collect, args=(args.port_firefox, ))
+            t.start()
 
-    # run server forever
-    run(args.port)
+        # run server forever
+        run(args.port)
