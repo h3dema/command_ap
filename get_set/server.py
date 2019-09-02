@@ -459,13 +459,14 @@ class myHandler(BaseHTTPRequestHandler):
                        sta['rx drop misc'] / (sta['rx packets'] + sta['rx drop misc']),  # PLR
                        ]
         # join ret and ret2
-        print('ret', ret)
-        print('ret2', ret2)
         result = []  # contains the data to build the MOS
         for r in ret:
-            print(r)
-            result.append(r[1:] + ret2[r[0]])
-        print(result)
+            try:
+                result.append(r[1:] + ret2[r[0]])
+            except KeyError:
+                # do nothing
+                LOG.debug("get_mos_hybrid: error using key {}".format(r[0]))
+        LOG.debug(result)
         try:
             self.send_dictionary(result)
         except KeyError:
