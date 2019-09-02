@@ -25,10 +25,9 @@
 """
 import argparse
 import pickle
-import os
-import json
 import logging
 from threading import Thread
+from datetime import datetime
 
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
@@ -59,6 +58,8 @@ LOG = logging.getLogger('REST_SERVER')
 # creates a global var 'httpd' that receives the httpd handle that runs in the thread,
 # so we can stop it when CTRL-C is hit
 httpd = None
+last_rt = dict()  # save data from AP
+last_tx_bytes = None  # save last read tx_bytes in MOS AP
 
 
 class myHandler(BaseHTTPRequestHandler):
@@ -66,8 +67,6 @@ class myHandler(BaseHTTPRequestHandler):
     """
     def __init__(self, request, client_address, server):
         super().__init__(request, client_address, server)
-
-        self.last_rt = dict()  # used in get_mos_client()
 
     @property
     def query(self):
@@ -250,87 +249,6 @@ class myHandler(BaseHTTPRequestHandler):
         survey = get_iw_survey(interface=iface)
         self.send_dictionary(survey)
 
-    def get_features(self):
-        """ process /get_features
-
-            here we collect all features necessary to train the QoS predictor
-
-            :return: dictionary
-                {'54:e6:fc:da:ff:34': {'tx_bitrate': 1.0, 'rx_bitrate': 1.0,
-                                       'tx_power': 1.0, 'avg_signal': 54.0,
-                                       'rxdrop': 16.0, 'rxb': 1232.0, 'rxp': 32.0,
-                                       'txr': 0.0, 'txp': 3.0, 'txf': 0.0, 'txb': 487.0,
-                                       'crt': 1073085286.0, 'cbt': 1163082876.0,
-                                       'ctt': 60749755.0, 'cat': 3626867638.0,
-                                       'num_stations': 1
-                                       }
-                }
-
-        """
-        iface = self.query.get('iface', [''])[0]
-        survey = get_iw_survey(interface=iface)
-        k = [k for k in survey if survey[k].get('in use', False)][0]  # get only the channel in use
-
-        stations = get_iw_stations(interface=iface)
-        if len(self.query.get('mac', [''])[0]) == 0:
-            # in case there is no parameter --mac
-            result = stations
-            for i in stations:
-                try:
-                    station = stations[i]
-                    results = self.fill_feature_results(survey, station, k, stations, iface)
-                    result[i] = results
-                except KeyError:
-                    self.send_error()
-        else:
-            # in case there is parameter --mac
-            station_mac = self.query.get('mac', [''])[0]
-            try:
-                station = stations[station_mac]
-                result = self.fill_feature_results(survey, station, k, stations, iface)
-            except KeyError:
-                self.send_error()
-        try:
-            self.send_dictionary(result)
-        except KeyError:
-            self.send_error()
-
-    def get_mos_hybrid(self):
-        # get from memory
-        data = ffox_memory.pop()
-        LOG.debug(data)
-        # each line: (fr, sbr, plr)
-
-    def get_mos_client(self):
-        """
-            read from local memory is filled using an node.js server
-            this server receives connections from the clients, and then stores
-            the values in a local json file
-        """
-        # get from memory
-        data = ffox_memory.pop()
-        LOG.debug(data)
-        stations = [d['host'] for d in data]
-        # from data, obtain:
-        # * r[t] = reportedBitrate in time [t] / max_bitrate
-        # * srt = not_running_time / (not_running_time + execution_time)
-        # r[t-1] is obtained from a saved variable: self.last_rt[client_ip]
-        ret = []  # each line contains (R_t, R_t1, SR)
-        for sta in stations:
-            if sta in self.last_rt:
-                # obtain the parameters
-                pass
-            else:
-                # sta is not present
-                # * check if there is more than one entry for this station
-                # 1) yes: compute differences
-                # 2) no:
-                pass
-        try:
-            self.send_dictionary(ret)
-        except KeyError:
-            self.send_error()
-
     def get_scan(self):
         """ returns the partial results from iw scan dump
 
@@ -417,6 +335,205 @@ class myHandler(BaseHTTPRequestHandler):
         func = function_handler.get(cmd, self.send_error)
         func()
         return
+
+    # ********************************************************
+    #
+    #  this is specific to the QoS experiments (Marcos, Gilson, Henrique)
+    #
+    # ********************************************************
+    def get_features(self):
+        """ process /get_features
+
+            here we collect all features necessary to train the QoS predictor
+
+            :return: dictionary
+                {'54:e6:fc:da:ff:34': {'tx_bitrate': 1.0, 'rx_bitrate': 1.0,
+                                       'tx_power': 1.0, 'avg_signal': 54.0,
+                                       'rxdrop': 16.0, 'rxb': 1232.0, 'rxp': 32.0,
+                                       'txr': 0.0, 'txp': 3.0, 'txf': 0.0, 'txb': 487.0,
+                                       'crt': 1073085286.0, 'cbt': 1163082876.0,
+                                       'ctt': 60749755.0, 'cat': 3626867638.0,
+                                       'num_stations': 1
+                                       }
+                }
+
+        """
+        iface = self.query.get('iface', [''])[0]
+        survey = get_iw_survey(interface=iface)
+        k = [k for k in survey if survey[k].get('in use', False)][0]  # get only the channel in use
+
+        stations = get_iw_stations(interface=iface)
+        if len(self.query.get('mac', [''])[0]) == 0:
+            # in case there is no parameter --mac
+            result = stations
+            for i in stations:
+                try:
+                    station = stations[i]
+                    results = self.fill_feature_results(survey, station, k, stations, iface)
+                    result[i] = results
+                except KeyError:
+                    self.send_error()
+        else:
+            # in case there is parameter --mac
+            station_mac = self.query.get('mac', [''])[0]
+            try:
+                station = stations[station_mac]
+                result = self.fill_feature_results(survey, station, k, stations, iface)
+            except KeyError:
+                self.send_error()
+        try:
+            self.send_dictionary(result)
+        except KeyError:
+            self.send_error()
+
+    # ********************************************************
+    #
+    #  this is specific to the Video MOS experiments (Henrique's thesis)
+    #
+    # ********************************************************
+    def get_mos_hybrid(self):
+        # get from memory
+        data = ffox_memory.pop()
+        LOG.debug(data)
+        stations = list(set([d['host'] for d in data]))
+        ret = []  # each line contains the data from the clients that compose the client's part of the HYBRID MOS
+        for sta in stations:
+            # get data to process
+            sta_data = [d for d in data if d['host'] == sta and 'playing_time' in d]
+            # print(sta_data)
+            if len(sta_data) == 0:
+                # get next data
+                continue
+            if sta in last_rt:
+                # obtain the parameters
+                last_data = last_rt[sta]
+            else:
+                last_data = sta_data.pop(0)  # get first to perform difference
+            # get differences
+            # * check if there is more than one entry for this station
+            while len(sta_data) > 0:
+                actual_data = sta_data.pop(0)
+                # droppedFPS = actual_data['droppedFPS'] - last_data['droppedFPS']
+                t1 = datetime.strptime(actual_data['timestamp'], '%Y%m%d%H%M%S')
+                t0 = datetime.strptime(last_data['timestamp'], '%Y%m%d%H%M%S')
+                interval = max((t1 - t0).seconds, 0)
+                playing_time = actual_data['playing_time'] - last_data['playing_time']
+                not_running = max(interval - playing_time, 0)
+
+                FR = actual_data['reportedBitrate'] * playing_time / (playing_time + not_running)
+                frame_loss = actual_data['droppedFPS'] - last_data['droppedFPS']
+
+                ret.append([sta, actual_data['timestamp'], FR, frame_loss])
+                last_data = actual_data
+                break
+            last_rt[sta] = last_data  # save for another iteration
+        result = []  # contains the data to build the MOS
+        if len(ret) == 0:
+        """
+        * loss rate (PLR)
+            packets = | rx_packets[t] - rx_packets[t-1] |
+            PLR = rxdrop / (packets + rxdrop)
+
+        * send bit rate (SBR): SBR = tx_bitrate / maximum tx_bitrate
+        """
+
+        try:
+            self.send_dictionary(result)
+        except KeyError:
+            self.send_error()
+
+
+    def get_mos_ap(self):
+        """ :return: list[parameter], where parameters = [num_stations, BER, AMPDU, traffic_load]
+                     needed to compute the MOS_AP
+        """
+        iface = self.query.get('iface', [''])[0]
+
+        #  number of competing stations: performance of the wireless network degrades withincreasing number of users,
+        num_stations = len(get_iw_stations(interface=iface))
+
+        # Bit Error Rate (BER): variation of the Bit Error Rate (BER) that can cause the MAC frame to be received with errors and trigger retransmissions that canimpact the overall performances of the system2.
+        phy_iface = get_phy_with_wlan(interface=iface)
+        r = get_xmit(phy_iface)
+        tx_failed = np.sum([r[k] for k in r if 'TX-Failed' in k])
+        tx_pkts = np.sum([r[k] for k in r if 'TX-Pkts-All' in k])
+        # 'FER' = 'txf_detrend' / ('txf_detrend' + 'txp_detrend')
+        try:
+            FER = tx_failed / (tx_failed + tx_pkts)
+        except ZeroDivisionError:
+            FER = 0
+        BER = FER # !!!!
+
+        # frame aggregation: A-MPDU (MAC Protocol Data Unit) aggregation, allows many MAC frames to combine into one larger aggregated frame3.
+        AMPDU = np.sum([r[k] for k in r if 'AMPDUs Completed' in k])
+
+        # traffic load: percentage of traffic over the maximum throughput of the interface
+        tx_bytes = get_ifconfig(interface=iface)[tx_bytes]
+        if last_tx_bytes is None:
+            traffic_load = 0
+        else:
+            traffic_load = (tx_bytes - last_tx_bytes) / MAX_TX_BYTES_WIFI
+        last_tx_bytes = tx_bytes
+
+        result = [num_stations, BER, AMPDU, traffic_load]
+        try:
+            self.send_dictionary(result)
+        except KeyError:
+            self.send_error()
+
+
+    def get_mos_client(self):
+        """
+            read from local memory is filled using an node.js server
+            this server receives connections from the clients, and then stores
+            the values in a local json file
+        """
+        # get from memory
+        data = ffox_memory.pop()
+        stations = list(set([d['host'] for d in data]))
+        # from data, obtain:
+        # * r[t] = reportedBitrate in time [t] / max_bitrate
+        # * srt = not_running_time / (not_running_time + execution_time)
+        # r[t-1] is obtained from a saved variable: self.last_rt[client_ip]
+        ret = []  # each line contains (R_t, R_t1, SR) --> contains the data to build the MOS
+        for sta in stations:
+            # get data to process
+            sta_data = [d for d in data if d['host'] == sta and 'playing_time' in d]
+            # print(sta_data)
+            if len(sta_data) == 0:
+                # get next data
+                continue
+            if sta in last_rt:
+                # obtain the parameters
+                last_data = last_rt[sta]
+            else:
+                last_data = sta_data.pop(0)  # get first to perform difference
+            # get differences
+            # * check if there is more than one entry for this station
+            while len(sta_data) > 0:
+                actual_data = sta_data.pop(0)
+                # droppedFPS = actual_data['droppedFPS'] - last_data['droppedFPS']
+                t1 = datetime.strptime(actual_data['timestamp'], '%Y%m%d%H%M%S')
+                t0 = datetime.strptime(last_data['timestamp'], '%Y%m%d%H%M%S')
+                interval = (t1 - t0).seconds
+                if interval > 0:
+                    playing_time = actual_data['playing_time'] - last_data['playing_time']
+                    not_running = max(interval - playing_time, 0)
+                    srt = not_running / interval
+                else:
+                    srt = 0
+                rt_1 = last_data.get('calculatedBitrate', 0) / last_data.get('reportedBitrate')
+                rt = actual_data.get('calculatedBitrate', 0) / actual_data.get('reportedBitrate')
+                # print([rt, rt_1, srt])
+                ret.append([rt, rt_1, srt, sta])
+                last_data = actual_data
+                break
+
+            last_rt[sta] = last_data  # save for another iteration
+        try:
+            self.send_dictionary(ret)
+        except KeyError:
+            self.send_error()
 
 
 def run(port=8080):

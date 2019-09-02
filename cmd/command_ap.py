@@ -274,6 +274,18 @@ def trigger_scan(interface, path_iw=__DEFAULT_IW_PATH):
     os.system(cmd)
 
 
+def get_phy_with_wlan(interface, path_iw=__DEFAULT_IW_PATH):
+    """
+        :param interface: the name of the interface, e.g. 'wlan0'
+        :return: a string with the phy interface name
+    """
+    phy_ = get_iw_info(interface, path_iw=path_iw).get('wiphy', '')
+    if phy_ == '':
+        return None
+    else:
+        return 'phy{}'.format(phy_)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='get wifi info.')
     parser.add_argument('--verbose', action='store_true', help='verbose')
