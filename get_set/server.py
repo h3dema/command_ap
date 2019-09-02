@@ -310,13 +310,12 @@ class myHandler(BaseHTTPRequestHandler):
         # get from memory
         data = ffox_memory.pop()
         LOG.debug(data)
+        stations = [d['host'] for d in data]
         # from data, obtain:
         # * r[t] = reportedBitrate in time [t] / max_bitrate
         # * srt = not_running_time / (not_running_time + execution_time)
         # r[t-1] is obtained from a saved variable: self.last_rt[client_ip]
         ret = []  # each line contains (R_t, R_t1, SR)
-        for d in data:
-            pass
         try:
             self.send_dictionary(ret)
         except KeyError:
@@ -449,7 +448,7 @@ if __name__ == "__main__":
     parser.add_argument('--debug', action='store_true', help='set logging level to debug')
 
     parser.add_argument('--collect-firefox-data', action='store_true', help='creates a local server that receives POSTs from the web clients')
-    parser.add_argument('--port-firefox', type=int, default=8081, help='Set the server port to collect data from the firefox client')
+	    parser.add_argument('--port-firefox', type=int, default=8081, help='Set the server port to collect data from the firefox client')
     args = parser.parse_args()
 
     if args.debug:
