@@ -8,10 +8,10 @@ import re
 
 
 def decode_survey(data):
-    """
+    """ decodes the data provided by "iw survey dump"
 
-    :param data: output from iw dev survey dump
-    :return: dictionary of dictionary
+    @param data: output from iw dev survey dump
+    @return: dictionary of dictionary
             {2432: {'noise': '-95 dBm',
                     'in use': True,
                     'channel transmit time': '713 ms',

@@ -78,10 +78,12 @@ class myHandler(BaseHTTPRequestHandler):
 
     @property
     def query(self):
+        """parses the HTML query field"""
         q = urllib.parse.urlparse(self.path).query
         return urllib.parse.parse_qs(q)
 
     def send_error(self):
+        """returns to the web client a 404 error"""
         self.send_response(404)  # Not found
         self.send_header('Content-type', 'text/html')
         self.end_headers()
@@ -89,6 +91,9 @@ class myHandler(BaseHTTPRequestHandler):
         self.wfile.write("Command unknown".encode())
 
     def send_dictionary(self, d):
+        """ returns to the web client a dictionary containing the data.
+            the client should use pickle.loads() to reconvert the data to a python object
+        """
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
@@ -98,13 +103,13 @@ class myHandler(BaseHTTPRequestHandler):
     def info(self):
         """ process /get_info
 
-        :return: dictionary
+        @return: dictionary
             {'wiphy': '0', 'Interface': 'wlan0', 'addr': 'b0:aa:ab:ab:ac:11',
              'width': '20MHz,', 'channel': '6',
              'txpower': '1.00 dBm', 'ssid': 'ethanolQL1', 'type': 'AP',
              'ifindex': '3', 'frequency': '2437MHz,',
              'wdev': '0x1', 'center1': '2437MHz'}
-
+        @rtype: dict
         """
         iface = self.query.get('iface', [''])[0]
         info = get_iw_info(interface=iface)
@@ -114,7 +119,7 @@ class myHandler(BaseHTTPRequestHandler):
     def iwconfig(self):
         """ process /get_iwconfig
 
-        :return: dictionary
+        @return: dictionary
         {'Power Management': 'off', 'RTS thr': 'off', 'IEEE': '802.11bgn',
          'Mode': 'Master', 'Retry short limit': 7, 'Fragment thr': 'off',
          'interface': 'wlan0'}
@@ -127,7 +132,7 @@ class myHandler(BaseHTTPRequestHandler):
     def ifconfig(self):
         """ process /get_ifconfig
 
-        :return:
+        @return:
             {'iface': 'wlan0',
              'rx_bytes': '2986426585', 'rx_overruns': '0', 'rx_dropped': '0',
              'rx_packets': '30257063', 'rx_scale_bytes': '2.9', 'rx_errors': '0'
@@ -146,7 +151,7 @@ class myHandler(BaseHTTPRequestHandler):
     def get_power(self):
         """ process /get_power
 
-        :return: the tx power of iface
+        @return: the tx power of iface
         """
         iface = self.query.get('iface', [''])[0]
         pwr = get_power(interface=iface)
@@ -155,7 +160,7 @@ class myHandler(BaseHTTPRequestHandler):
     def set_power(self):
         """ process /set_power
 
-            :return: set the tx power of iface to new_power
+            @return: set the tx power of iface to new_power
         """
         iface = self.query.get('iface', [''])[0]
         new_power = self.query.get('new_power', [-1])[0]
@@ -166,7 +171,8 @@ class myHandler(BaseHTTPRequestHandler):
     def set_channel(self):
         """ process /set_channel
 
-            :return: new channel
+            @return: new channel in a dictionary format {'channel': new_channel}
+            @rtype: dict
         """
         iface = self.query.get('iface', [''])[0]
         new_channel = int(self.query.get('new_channel', [-1])[0])
@@ -176,12 +182,12 @@ class myHandler(BaseHTTPRequestHandler):
     def xmit(self):
         """ process /get_xmit
 
-        :return: dictionary
+            @return: dictionary
             {'TXOP Exceeded_VO': '0', 'TX-Pkts-All_VO': '4441336', 'FIFO Underrun_BK': '0',
              'HW-put-tx-buf_BK': '0', 'DELIM Underrun_VI': '0', 'MPDUs Queued_BE': '866',
              'DESC CFG Error_VO': '0', 'Aggregates_BK': '0', 'FIFO Underrun_VO': '0',
              'DESC CFG Error_VI': '0', 'AMPDUs Queued HW_VI': '0', 'TX-Pkts-All_BE': '42978693', 'TX-Pkts-All_VI': '0', 'DELIM Underrun_BK': '0', 'MPDUs Completed_BK': '0', 'DELIM Underrun_VO': '0', 'AMPDUs XRetried_BE': '1086', 'TX-Failed_BE': '0', 'AMPDUs XRetried_VI': '0', 'DATA Underrun_VI': '0', 'DESC CFG Error_BK': '0', 'TXERR Filtered_BK': '0', 'HW-put-tx-buf_BE': '34862773', 'AMPDUs Retried_VO': '0', 'TX-Pkts-All_BK': '0', 'TX-Failed_VO': '0', 'TXTIMER Expiry_VI': '0', 'DESC CFG Error_BE': '3', 'AMPDUs Completed_BE': '8317901', 'TX-Failed_BK': '0', 'HW-tx-start_BK': '0', 'TXTIMER Expiry_BK': '0', 'AMPDUs Queued HW_BK': '0', 'FIFO Underrun_BE': '2', 'Aggregates_BE': '1286133', 'AMPDUs Completed_VI': '0', 'AMPDUs Queued SW_BE': '42978305', 'AMPDUs Retried_BE': '811701', 'HW-put-tx-buf_VO': '4441003', 'TX-Bytes-All_VI': '0', 'TX-Bytes-All_BK': '0', 'AMPDUs Queued HW_BE': '0', 'MPDUs XRetried_VI': '0', 'MPDUs Queued_VI': '0', 'Aggregates_VI': '0', 'DATA Underrun_BK': '0', 'MPDUs Completed_VO': '4435505', 'MPDUs XRetried_BK': '0', 'MPDUs Queued_VO': '4280885', 'Aggregates_VO': '0', 'TXOP Exceeded_BK': '0', 'AMPDUs Queued SW_BK': '0', 'FIFO Underrun_VI': '0', 'HW-put-tx-buf_VI': '0', 'MPDUs XRetried_VO': '5831', 'AMPDUs Queued HW_VO': '0', 'TXERR Filtered_VO': '412', 'DELIM Underrun_BE': '0', 'TX-Bytes-All_BE': '2498976381', 'DATA Underrun_BE': '0', 'HW-tx-proc-desc_BK': '0', 'HW-tx-start_BE': '0', 'MPDUs XRetried_BE': '42463', 'TXERR Filtered_VI': '0', 'AMPDUs Queued SW_VI': '0', 'TX-Bytes-All_VO': '796749298', 'AMPDUs Completed_VO': '0', 'TXOP Exceeded_BE': '0', 'AMPDUs XRetried_BK': '0', 'DATA Underrun_VO': '0', 'MPDUs Completed_VI': '0', 'AMPDUs Retried_VI': '0', 'AMPDUs Queued SW_VO': '160451', 'TXOP Exceeded_VI': '0', 'HW-tx-proc-desc_BE': '39331824', 'HW-tx-proc-desc_VI': '0', 'AMPDUs Retried_BK': '0', 'HW-tx-start_VI': '0', 'AMPDUs XRetried_VO': '0', 'TXTIMER Expiry_VO': '0', 'TXERR Filtered_BE': '108810', 'HW-tx-proc-desc_VO': '4441078', 'TX-Failed_VI': '0', 'MPDUs Queued_BK': '0', 'TXTIMER Expiry_BE': '0', 'MPDUs Completed_BE': '34617243', 'AMPDUs Completed_BK': '0', 'HW-tx-start_VO': '0'}
-
+            @rtype: dict
         """
         phy_iface = self.query.get('phy', ['phy0'])[0]
         r = get_xmit(phy_iface)
@@ -190,7 +196,7 @@ class myHandler(BaseHTTPRequestHandler):
     def get_stations(self):
         """ process /num_stations
 
-        :return:
+            @return:
             {'54:e6:fc:da:ff:34': {'short slot time': 'yes', 'DTIM period': 2.0,
                                    'authorized': 'yes',
                                    'tx bitrate': 1.0,
@@ -206,7 +212,7 @@ class myHandler(BaseHTTPRequestHandler):
                                    'connected time': 0.0, 'inactive time': 4.0, 'associated': 'yes',
                                    }
              }
-
+            @rtype: dict
         """
         iface = self.query.get('iface', [''])[0]
         stations = get_iw_stations(interface=iface)
@@ -215,7 +221,8 @@ class myHandler(BaseHTTPRequestHandler):
     def get_num_stations(self):
         """ process /get_num_stations
 
-        :return:
+        @return: number of stations
+        @rtype: int
         """
         iface = self.query.get('iface', [''])[0]
         stations = get_iw_stations(interface=iface)
@@ -223,13 +230,13 @@ class myHandler(BaseHTTPRequestHandler):
 
     def get_survey(self):
         """
-            :return: dictionary
+            @return:
                 {2432: {'channel busy time': 394.0, 'channel receive time': 285.0, 'channel transmit time': 81.0, 'noise': 81.0, 'channel active time': 1104.0},
                  2437: {'in use': True, 'channel receive time': 1073537372.0, 'noise': 80.0, 'channel busy time': 1163590333.0, 'channel transmit time': 60790348.0, 'channel active time': 3628159621.0},
                  2442: {'channel busy time': 682.0, 'channel receive time': 336.0, 'channel transmit time': 310.0, 'noise': 81.0, 'channel active time': 1121.0}, 2412: {'channel busy time': 722824.0, 'channel receive time': 505677.0, 'channel transmit time': 204390.0, 'noise': 80.0, 'channel active time': 1681119.0}, 2447: {'channel busy time': 194.0, 'channel receive time': 135.0, 'channel transmit time': 27.0, 'noise': 81.0, 'channel active time': 1121.0}, 2417: {'channel busy time': 351.0, 'channel receive time': 316.0, 'channel transmit time': 19.0, 'noise': 80.0, 'channel active time': 1200.0}, 2452: {'channel busy time': 242.0, 'channel receive time': 167.0, 'channel transmit time': 27.0, 'noise': 80.0, 'channel active time': 1127.0}, 2422: {'channel busy time': 240.0, 'channel receive time': 189.0, 'channel transmit time': 17.0, 'noise': 80.0, 'channel active time': 1165.0}, 2457: {'channel busy time': 458.0, 'channel receive time': 419.0, 'channel transmit time': 19.0, 'noise': 80.0, 'channel active time': 1110.0}, 2427: {'channel busy time': 823.0, 'channel receive time': 193.0, 'channel transmit time': 575.0, 'noise': 81.0, 'channel active time': 3462.0}, 2462: {'channel busy time': 2614.0, 'channel receive time': 1448.0, 'channel transmit time': 1085.0, 'noise': 80.0, 'channel active time': 3320.0}}
                  2467: {},
                  2472: {},
-
+            @rtype: dict
         """
         iface = self.query.get('iface', [''])[0]
         survey = get_iw_survey(interface=iface)
@@ -261,7 +268,7 @@ class myHandler(BaseHTTPRequestHandler):
 
     def get_scan_mac(self):
         """ return the result from iw scan dump
-            :return: List[str] each entry is a detected mac
+            @return: list[str] each entry is a detected mac
         """
         iface = self.query.get('iface', [''])[0]
         trigger_scan(interface=iface)
@@ -271,15 +278,16 @@ class myHandler(BaseHTTPRequestHandler):
     def get_config(self):
         """ return the result from hostapd_cli get_config
 
-            {'group_cipher': 'CCMP', 'key_mgmt': 'WPA-PSK ', 'rsn_pairwise_cipher': 'CCMP',
+            @return: {'group_cipher': 'CCMP', 'key_mgmt': 'WPA-PSK ', 'rsn_pairwise_cipher': 'CCMP',
              'ssid': 'ethanolQL1', 'bssid': 'b0:aa:ab:ab:ac:11',
              'wps_state': 'disabled'}
-
+            @rtype: dict
         """
         conf = get_config()
         self.send_dictionary(conf)
 
     def hello(self):
+        """standard hello response. white page with 200 code"""
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
@@ -329,6 +337,11 @@ class myHandler(BaseHTTPRequestHandler):
     # ********************************************************
     def fill_feature_results(self, survey, station, k, stations, iface):
         """ function that returns the features of a station.
+            @param survey: data from iw survey dump
+            @param station: the station data selected from the result of "iw station dump"
+            @param k: the k-th value of the survey
+            @param stations: data from iw station dump
+            @param iface: wireless interface name
         """
         results = {'num_stations': len(stations),
                    'tx_power': get_power(interface=iface),
@@ -354,7 +367,7 @@ class myHandler(BaseHTTPRequestHandler):
 
             here we collect all features necessary to train the QoS predictor
 
-            :return: dictionary
+            @return: dictionary
                 {'54:e6:fc:da:ff:34': {'tx_bitrate': 1.0, 'rx_bitrate': 1.0,
                                        'tx_power': 1.0, 'avg_signal': 54.0,
                                        'rxdrop': 16.0, 'rxb': 1232.0, 'rxp': 32.0,
@@ -401,7 +414,7 @@ class myHandler(BaseHTTPRequestHandler):
     # ********************************************************
     def get_mos_hybrid(self):
         """
-            : return: [[timestamp, FR, frame_loss, SBR, PLR], ...]
+            @return: [[timestamp, FR, frame_loss, SBR, PLR], ...]
         """
         iface = self.query.get('iface', [''])[0]
         sta_mac_mapping_str = self.query.get('macs', [''])[0]
@@ -473,7 +486,7 @@ class myHandler(BaseHTTPRequestHandler):
             self.send_error()
 
     def get_mos_ap(self):
-        """ :return: [num_stations, BER, AMPDU, traffic_load]
+        """ @return: [num_stations, BER, AMPDU, traffic_load]
                      needed to compute the MOS_AP
         """
         iface = self.query.get('iface', [''])[0]
@@ -526,14 +539,17 @@ class myHandler(BaseHTTPRequestHandler):
             read from local memory is filled using an node.js server
             this server receives connections from the clients, and then stores
             the values in a local json file
+
+            - r[t] = reportedBitrate in time [t] / max_bitrate
+            - srt = not_running_time / (not_running_time + execution_time)
+            - r[t-1] is obtained from a saved variable: self.last_rt[client_ip]
+
+            @ return: [rt, rt_1, srt, sta]
         """
         # get from memory
         data = ffox_memory.pop()
         stations = list(set([d['host'] for d in data]))
-        # from data, obtain:
-        # * r[t] = reportedBitrate in time [t] / max_bitrate
-        # * srt = not_running_time / (not_running_time + execution_time)
-        # r[t-1] is obtained from a saved variable: self.last_rt[client_ip]
+        # from data, obtain: rt, rt_1, srt, sta
         ret = []  # each line contains (R_t, R_t1, SR) --> contains the data to build the MOS
         for sta in stations:
             # get data to process
@@ -577,8 +593,10 @@ class myHandler(BaseHTTPRequestHandler):
 
 def run(port=8080):
     try:
-        """Create a web server and define the handler to manage the
-            incoming request"""
+        """ Create a web server and define the handler to manage the
+            incoming request
+            @param port: number of the server port. Defaults to 8080
+        """
         server = HTTPServer(('', port), myHandler)
         LOG.info('Started httpserver on port {} to command Wi-Fi'.format(port))
 
@@ -596,6 +614,8 @@ def run(port=8080):
 def collect(port):
     """ creates an HTTP server that receives POST requests from the client
         save the BODY as JSON in a file
+
+        @param port: number of the server port. Required.
     """
     server_address = ('', port)
     LOG.info('Starting httpd @ {}... for the firefox clients'.format(port))

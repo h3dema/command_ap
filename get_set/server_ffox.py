@@ -3,6 +3,9 @@
 
 
 """
+The client (firefox) sends the following json data:
+
+
 {'chunkData[resolution][]': '768',
 'chunkData[start]': '32',
 'chunkData[filename]': '7-16.video',
@@ -43,6 +46,11 @@ LOG = logging.getLogger('SERVER_FFOX')
 
 
 def decode3field(x):
+    """
+        @param x: a string formatted as "float | float | float" to be converted to a list
+        @return: a list with 3 floats
+        @rtype: list(float)
+    """
     ret = dict()
     vs = x.split('|')
     for k, v in zip(['avg', 'high', 'low'], vs):
@@ -51,12 +59,18 @@ def decode3field(x):
 
 
 def decodeInt(x):
+    """
+        @param x: a string to be converted to int
+        @return: an int, or np.nan
+        @rtype: int
+    """
     try:
         return int(x)
     except ValueError:
         return np.nan
 
 
+"""maps the field to a lambda that decodes the data"""
 funcs = {'droppedFPS': lambda x: decodeInt(x),
          'index': lambda x: decodeInt(x),
          'maxIndex': lambda x: decodeInt(x),
@@ -105,7 +119,7 @@ class FirefoxDataMemory (object):
         return ret
 
 
-# saves the data retrieved from clients
+"""memory that saves the data retrieved from clients"""
 ffox_memory = FirefoxDataMemory()
 
 
@@ -113,12 +127,14 @@ class SrvPosts(BaseHTTPRequestHandler):
     """ receives posts from the client (firefox), and saves the data into a json file
     """
     def _set_headers(self):
+        """defines the default html header"""
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
     def do_POST(self):
-        # get the data, and save it into a JSON file
+        """get the data, and save it into memory (a global variable called ffox_memory)
+        """
         content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
         post_data = self.rfile.read(content_length).decode('utf-8')
         q = urllib.parse.parse_qs(post_data)

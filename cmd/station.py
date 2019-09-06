@@ -8,10 +8,10 @@ import re
 
 
 def decode_iw_station(data):
-    """
+    """ return the data from "iw dev station dump"
 
-    :param data: output from iw dev station dump
-    :return:
+    @param data: output from "iw dev station dump"
+    @return:
     """
     result = dict()
     station = None
@@ -34,10 +34,10 @@ def decode_iw_station(data):
 
 
 def decode_hostapd_status(data):
-    """
+    """ decodes "hostapd_cli status"'s output
 
-    :param data: output from hostapd_cli status
-    :return: dictionary containing
+    @param data: output from hostapd_cli status
+    @return: dictionary containing
         {olbc_ht : 1
          cac_time_left_seconds : N/A
          num_sta_no_short_slot_time : 0
@@ -75,9 +75,10 @@ def decode_hostapd_status(data):
 
 
 def is_mac(s):
-    """ verifies if s contains a MAC address
+    """ verifies if 's' contains a MAC address
 
-        :return the mac address found or None
+        @return: the mac address found or None
+        @rtype: str
     """
     try:
         mac = re.search(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', s, re.I).group()
@@ -89,8 +90,8 @@ def is_mac(s):
 def decode_hostapd_station(data):
     """
 
-    :param data: output from hostapd_cli all_sta
-    :return: dictionary of dictionary
+    @param data: output from hostapd_cli all_sta
+    @return: dictionary of dictionary
          {station1_mac: {'dot11RSNAStatsSelectedPairwiseCipher': '00-0f-ac-4',
                          'rx_packets': '164',
                          'dot11RSNAStatsTKIPLocalMICFailures': '0',

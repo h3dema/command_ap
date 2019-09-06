@@ -27,9 +27,9 @@ def check(line, items):
     """
         helper function: test if one of the items in items exists in line
 
-    :param line: the line to check
-    :param items: list of items
-    :return: true if the item in items exists in line
+        @param line: the line to check
+        @param items: list of items
+        @return: true if the item in items exists in line
     """
     for item in items:
         if item in line:
@@ -42,8 +42,8 @@ def decode_xmit(filename):
         reads the ath*k/xmit file, if file not found returns an empty dictionary
         otherwise decodes the file and returns a dictionary with its contents
 
-    :param filename: full path to xmit
-    :return: a dictionary with xmit's content
+        @param filename: full path to xmit
+        @return: a dictionary with xmit's content
     """
     result = dict()
     if exists(filename):

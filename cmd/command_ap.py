@@ -31,6 +31,12 @@ __PATH_IFCONFIG = '/sbin'
 
 
 def get_xmit(phy_iface='phy0'):
+    """ get data from the xmit file.
+        looks for it in /sys/kernel/debug/ieee80211/ath*/xmit
+
+        @return: the xmit fields
+        @rtype: dict
+    """
     # TODO: find if it is ath9k, ath10k....
     path_to_phy = os.path.join('/sys/kernel/debug/ieee80211', phy_iface)
     try:
@@ -43,6 +49,14 @@ def get_xmit(phy_iface='phy0'):
 
 
 def get_ifconfig(interface, path_ifconfig=__PATH_IFCONFIG):
+    """ get data from ifconfig <interface>.
+
+        @param interface: the wireless interface name, e.g. wlan0
+        @param path_ifconfig: path to ifconfig
+
+        @return: the ifconfig fields
+        @rtype: dict
+    """
     cmd = "{} {}".format(os.path.join(path_ifconfig, 'ifconfig'), interface)
     with os.popen(cmd) as p:
         ret = decode_ifconfig(p.readlines())
@@ -50,6 +64,14 @@ def get_ifconfig(interface, path_ifconfig=__PATH_IFCONFIG):
 
 
 def get_iw_stations(interface, path_iw=__DEFAULT_IW_PATH):
+    """ executes "iw station dump"
+
+        @param interface: the wireless interface name, e.g. wlan0
+        @param path_iw: path to iw
+
+        @return: the command fields
+        @rtype: dict
+    """
     cmd = "{} dev {} station dump".format(os.path.join(path_iw, 'iw'), interface)
     with os.popen(cmd) as p:
         data = p.read().replace('\t', '').split('\n')
@@ -58,9 +80,13 @@ def get_iw_stations(interface, path_iw=__DEFAULT_IW_PATH):
 
 
 def get_status(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
-    """ get information from hostapd_cli status
+    """ get information from "hostapd_cli status"
+        TODO: what if the interface has multiple SSIDs ???
 
-        todo: what if the interface has multiple SSIDs ???
+        @param path_hostapd_cli: path to hostapd_cli
+
+        @return: the returned command fields
+        @rtype: dict
     """
     cmd = "{} status".format(os.path.join(path_hostapd_cli, 'hostapd_cli'))
     with os.popen(cmd) as p:
@@ -70,8 +96,18 @@ def get_status(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
 
 
 def change_channel(interface, new_channel, count=1, ht_type=None, path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
-    # TODO: add other optional parameters
-    #       [sec_channel_offset=] [center_freq1=] [center_freq2=] [bandwidth=] [blocktx]
+    """ set the AP's channel using "hostapd_cli chan_switch" command.
+        TODO: add other optional parameters
+              [sec_channel_offset=] [center_freq1=] [center_freq2=] [bandwidth=] [blocktx]
+
+        @param interface: the wireless interface name, e.g. wlan0
+        @param new_channel: the new channel number. Trying to change to the current channel returns an error.
+        @param ht_type: Valid values are ['', 'ht', 'vht']. Defines the type of channel. Invalid type return an error, e.g. 'vht' in a 802.11g device.
+        @param path_hostapd_cli: path to hostapd_cli
+
+        @return: the ifconfig fields
+        @rtype: dict
+    """
     assert new_channel > 0 and new_channel <= len(valid_frequencies), "{} not in valid channels".format(new_channel)
     frequency = valid_frequencies[new_channel - 1]
     params = "-i {} chan_switch {} {}".format(interface, count, frequency)
@@ -87,8 +123,8 @@ def change_channel(interface, new_channel, count=1, ht_type=None, path_hostapd_c
 def get_stations(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
     """ returns information about all connected stations
 
-        :param path_hostapd_cli: path to hostapd_cli
-        :return dictionary of dictionary
+        @param path_hostapd_cli: path to hostapd_cli
+        @return: dictionary of dictionary
     """
     cmd = "{} all_sta".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI))
     with os.popen(cmd) as p:
@@ -98,6 +134,14 @@ def get_stations(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
 
 
 def get_iw_info(interface, path_iw=__DEFAULT_IW_PATH):
+    """ executes "iw dev info"
+
+        @param interface: the wireless interface name, e.g. wlan0
+        @param path_iw: path to iw
+
+        @return: the command fields
+        @rtype: dict
+    """
     cmd = "{} dev {} info".format(os.path.join(path_iw, 'iw'), interface)
     with os.popen(cmd) as p:
         ret = p.read().replace('\t', '').split('\n')
@@ -122,7 +166,14 @@ def get_iw_info(interface, path_iw=__DEFAULT_IW_PATH):
 
 
 def get_iwconfig_info(interface, path_iwconfig=__DEFAULT_IWCONFIG_PATH):
-    """ NOTE: this method only supports (tested) two modes = Managed and Master
+    """ get the return from "iwconfig <interface>"
+        NOTE: this method only supports (tested) two modes = Managed and Master
+
+        @param interface: interface to change
+        @param path_iwconfig: path to iwconfig
+
+        @return: the command fields
+        @rtype: dict
     """
     cmd = "{} {}".format(os.path.join(path_iwconfig, 'iwconfig'), interface)
     with os.popen(cmd) as p:
@@ -136,8 +187,11 @@ def get_iwconfig_info(interface, path_iwconfig=__DEFAULT_IWCONFIG_PATH):
 def get_power(interface, path_iw=__DEFAULT_IW_PATH, path_iwconfig=__DEFAULT_IWCONFIG_PATH):
     """ get the power in the interface (from a station or AP)
 
-        :param interface: interface to change
-        :param path_iw: path to iw
+        @param interface: interface to change
+        @param path_iw: path to iw
+
+        @return: the command fields
+        @rtype: dict
     """
     ret = get_iw_info(interface, path_iw)
     txpower = ret.get('txpower', None)
@@ -158,9 +212,11 @@ def set_iw_power(interface, new_power, path_iw=__DEFAULT_IW_PATH):
     """ command dev <devname> set txpower <auto|fixed|limit> [<tx power in mBm>]
         NOTE: this module needs to run as superuser to set the power
 
-        :param interface: interface to change
-        :param new_power: can be a string 'auto', or a number (int or float) that represents the new power in dBm
-        :param path_iw: path to iw
+        @param interface: interface to change
+        @param new_power: can be a string 'auto', or a number (int or float) that represents the new power in dBm
+        @param path_iw: path to iw
+
+        @return: if the command succeded
     """
     iw_cmd = "{}".format(os.path.join(path_iw, 'iw'))
     if new_power == 'auto':
@@ -176,6 +232,13 @@ def set_iw_power(interface, new_power, path_iw=__DEFAULT_IW_PATH):
 
 
 def disassociate_sta(mac_sta, path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
+    """ sends the command to disassociate a station
+
+        @param mac_sta: the MAC address of the station we want to disassociate
+
+        @return: if the command succeded
+        @rtype: bool
+    """
     cmd = "{} disassociate {}".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI), mac_sta)
     with os.popen(cmd) as p:
         ret = p.read()
@@ -183,8 +246,11 @@ def disassociate_sta(mac_sta, path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
 
 
 def get_config(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
-    """
-        :return dictionary {'ssid': 'ethanolQL1',
+    """ executes "hostapd_cli get_config"
+
+        @param path_hostapd_cli: path to hostapd_cli
+
+        @return: dictionary {'ssid': 'ethanolQL1',
                             'bssid': 'b0:aa:ab:ab:ac:11',
                             'rsn_pairwise_cipher': 'CCMP',
                             'group_cipher': 'CCMP',
@@ -201,12 +267,12 @@ def get_config(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
 
 
 def get_iw_survey(interface, path_iw=__DEFAULT_IW_PATH):
-    """ command  dev <devname> survey dump
+    """ executes command "iw dev <interface> survey dump"
 
-        :param interface: interface to change
-        :param path_iw: path to iw
+        @param interface: interface to change
+        @param path_iw: path to iw
 
-        :return decoded information from survey
+        @return: decoded information from survey
     """
     cmd = "{} dev {} survey dump".format(os.path.join(path_iw, 'iw'), interface)
     with os.popen(cmd) as p:
@@ -216,12 +282,12 @@ def get_iw_survey(interface, path_iw=__DEFAULT_IW_PATH):
 
 
 def get_iw_scan_full(interface, path_iw=__DEFAULT_IW_PATH):
-    """ command  dev <devname> scan dump
+    """ execute command "iw dev <interface> scan dump"
 
-        :param interface: interface to change
-        :param path_iw: path to iw
+        @param interface: interface to change
+        @param path_iw: path to iw
 
-        :return decoded information from scan dump
+        @return: decoded information from scan dump
     """
     cmd = "sudo {} dev {} scan dump".format(os.path.join(path_iw, 'iw'), interface)
     with os.popen(cmd) as p:
@@ -231,12 +297,12 @@ def get_iw_scan_full(interface, path_iw=__DEFAULT_IW_PATH):
 
 
 def get_iw_scan_mac(interface, path_iw=__DEFAULT_IW_PATH):
-    """ command  dev <devname> scan dump
+    """ executes the command "iw dev <interface> scan dump"
 
-        :param interface: interface to scan
-        :param path_iw: path to iw
+        @param interface: interface to scan
+        @param path_iw: path to iw
 
-        :return decoded information from scan dump, only the detected MACs
+        @return: decoded information from scan dump, only the detected MACs
     """
     cmd = "sudo {} dev {} scan dump 2>&1".format(os.path.join(path_iw, 'iw'), interface)
     with os.popen(cmd) as p:
@@ -246,12 +312,12 @@ def get_iw_scan_mac(interface, path_iw=__DEFAULT_IW_PATH):
 
 
 def get_iw_scan(interface, path_iw=__DEFAULT_IW_PATH):
-    """ command  dev <devname> scan dump
+    """ command  dev <interface> scan dump
 
-        :param interface: interface to scan
-        :param path_iw: path to iw
+        @param interface: interface to scan
+        @param path_iw: path to iw
 
-        :return decoded information from scan dump, only the detected MACs
+        @return: decoded information from scan dump, only the detected MACs
     """
     cmd = "sudo {} dev {} scan dump 2>&1".format(os.path.join(path_iw, 'iw'), interface)
     with os.popen(cmd) as p:
@@ -261,14 +327,14 @@ def get_iw_scan(interface, path_iw=__DEFAULT_IW_PATH):
 
 
 def trigger_scan(interface, path_iw=__DEFAULT_IW_PATH):
-    """ command  dev <devname> scan trigger
+    """ command  dev <interface> scan trigger
         it is necessary to call this method before call any method with 'scan',
         it forces the AP to scan all valid channels, and populate the statistics
 
-        :param interface: interface to scan
-        :param path_iw: path to iw
+        @param interface: interface to scan
+        @param path_iw: path to iw
 
-        :return: nothing
+        @return: nothing
     """
     cmd = "sudo {} dev {} scan trigger".format(os.path.join(path_iw, 'iw'), interface)
     os.system(cmd)
@@ -276,8 +342,8 @@ def trigger_scan(interface, path_iw=__DEFAULT_IW_PATH):
 
 def get_phy_with_wlan(interface, path_iw=__DEFAULT_IW_PATH):
     """
-        :param interface: the name of the interface, e.g. 'wlan0'
-        :return: a string with the phy interface name
+        @param interface: the name of the interface, e.g. 'wlan0'
+        @return: a string with the phy interface name
     """
     phy_ = get_iw_info(interface, path_iw=path_iw).get('wiphy', '')
     if phy_ == '':

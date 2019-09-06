@@ -9,6 +9,13 @@
 def grab_first(x, k, type=None):
     """
         helper function to decode iwconfig. grabs the first element of the split given by key k
+
+        @param x: string to be splitted by 'espaces'
+        @param k: position of the splitted result to be returned
+        @param type: valid values are [int, float, None]. If None, return the str, else try to convert to the specified type
+
+        @return: the element 'k'
+        @rtype: type
     """
     v = x.split(k)[1].split()[0]
     if type is not None:
@@ -19,6 +26,7 @@ def grab_first(x, k, type=None):
     return v
 
 
+"""lambda functions to be applied according to the field"""
 cmds_iwconfig = {'IEEE': lambda x: grab_first(x, 'IEEE'),
                  'ESSID': lambda x: grab_first(x, 'ESSID:'),
                  'Mode': lambda x: grab_first(x, 'Mode:'),
@@ -45,8 +53,8 @@ def decode_iwconfig(data):
     """
         get the output of iwconfig and convert it into a dictionary
 
-    :param data: output of iwconfig captured by the system
-    :return: a dictionary with iwconfig fields
+        @param data: output of iwconfig captured by the system
+        @return: a dictionary with iwconfig fields
     """
     result = dict()
     for line in data.replace('\t', '').split('\n'):

@@ -8,10 +8,10 @@ import re
 
 def decode_ifconfig(data):
     """
-    read ifconfig's output and returns a dictionary with the data
+        read ifconfig's output and returns a dictionary with the data
 
-    :param data: is the captured screen from ifconfig output
-    :return: dictionary with decoded ifconfig output
+        @param data: is the captured screen from ifconfig output
+        @return: dictionary with decoded ifconfig output
     """
     iface = 'ERROR'
     lines = [_l.replace('\t', '').replace('\n', '') for _l in data]

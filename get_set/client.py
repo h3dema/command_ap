@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-    server that accepts requests from an http client
-    used to send commands to the AP
+    the server accepts requests from an http client.
+    this module is uses to send commands to the AP, for testing purposes.
 
 
     Usage:
@@ -14,6 +14,10 @@ import http.client
 import urllib.parse
 import sys
 
+""" used to assert the valid commands.
+    does not cover all available commands.
+    see serve.py
+"""
 valid_urls = ['/', '/test', '/info', '/get_power', '/set_power', '/iwconfig', '/get_features']
 
 

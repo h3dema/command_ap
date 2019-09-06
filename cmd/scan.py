@@ -53,10 +53,10 @@ def get_subitems(_l, lines):
 
 def decode_scan(data):
     """ decodes all the information returned by `scan dump`
-        :param data: the output of scan dump
-        :return: dictionary containing the data
+        TODO: finish all fields
 
-        TODO: finish
+        @param data: the output of scan dump
+        @return: dictionary containing the data
     """
     lines = data.split('\n')
     ret = dict()
@@ -84,7 +84,9 @@ def decode_scan(data):
 
 def decode_scan_mac(data):
     """ get the list of APs in range
-        :return: list with the macs detected
+
+        @param data: the output of scan dump
+        @return: list with the macs detected
     """
     macs = []
     lines = data.split('\n')
@@ -98,7 +100,9 @@ def decode_scan_mac(data):
 
 def decode_scan_basic(data):
     """ get the list of APs in range
-        :return: list with the macs detected
+
+        @param data: the output of scan dump
+        @return: list with the macs detected
     """
     macs = dict()
     lines = data.split('\n')
