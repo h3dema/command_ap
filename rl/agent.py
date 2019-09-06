@@ -23,29 +23,21 @@ import sys
 import joblib
 import argparse
 import logging
-import numpy as np
 import pickle
+import datetime
+from collections import defaultdict
+
 import http.client
 import urllib.parse
-from collections import defaultdict
+
 import pandas as pd
-# from mab import EpsilonGreedyAbstract
+import numpy as np
+
+from model import create_window
+from keras.models import load_model
+
 from mab import UCBAbstract
 from reward import calc_reward
-from model import get_QoS
-from model import create_window
-# import time to debug
-import time
-# import keras
-from keras.models import load_model
-from keras.models import Sequential, Model
-from keras.layers import Input
-from keras.layers import Conv1D, GRU, LSTM
-from keras.layers import MaxPooling1D, AveragePooling1D
-from keras.layers import Dense, Dropout, Flatten
-from keras import metrics
-import datetime
-import math
 #
 # set log
 #
@@ -59,6 +51,13 @@ LOG.addHandler(f_handler)
 
 
 def send_command(server, port, interface, cmd):
+    """ send a command to the AP, using the REST API
+
+        @param server: server name or IP
+        @param port: socket port
+        @param interface: name of the wireless interface, e.g. 'wlan0'
+        @param cmd: the /command[?query]
+    """
     conn = http.client.HTTPConnection(args.server, args.port)
     url = "{}?{}".format(cmd, urllib.parse.urlencode({'iface': interface}))
     conn.request(method='GET', url=url)
@@ -73,6 +72,14 @@ def send_command(server, port, interface, cmd):
 
 
 def set_power(server, port, interface, new_power):
+    """ set the AP's transmission power
+
+        @param server: server name or IP
+        @param port: socket port
+        @param interface: name of the wireless interface, e.g. 'wlan0'
+        @param new_power: the new transmission power in dBm [1, 15]
+        @type new_power: int
+    """
     conn = http.client.HTTPConnection(args.server, args.port)
     url = "{}?{}".format('/set_power', urllib.parse.urlencode({'iface': interface, 'new_power': new_power}))
     conn.request(method='GET', url=url)
@@ -80,6 +87,14 @@ def set_power(server, port, interface, new_power):
 
 
 def get_power(server, port, interface):
+    """ get the AP's transmission power
+
+        @param server: server name or IP
+        @param port: socket port
+        @param interface: name of the wireless interface, e.g. 'wlan0'
+        @return: the transmission power in dBm [1, 15]
+        @rtype: int
+    """
     r = send_command(server, port, interface, '/get_power')
     txp = r.get('txpower', 0) if r is not None else 0
     LOG.info('txpower {}'.format(txp))
@@ -87,18 +102,35 @@ def get_power(server, port, interface):
 
 
 def get_features(server, port, interface):
+    """ get the AP's features necessary to calculate the QoS
+
+        @param server: server name or IP
+        @param port: socket port
+        @param interface: name of the wireless interface, e.g. 'wlan0'
+
+        @return: the features
+        @rtype: dict
+    """
     return send_command(server, port, interface, '/get_features')
 
 
-#
-# this is the real class
-# you should implement only the run_action method
-# this method interacts with the environment, performing the action and collection the reward
-# it returns if the agent was able to perform the action
-#
 class MABAgent(UCBAbstract):
+    """
+    this is the real class. it implements the abstract methods from UCBAbstract
+    you should implement only the run_action method
+    this method interacts with the environment, performing the action and collection the reward
+    it returns if the agent was able to perform the action
+    """
 
     def __init__(self, n_actions, server, port, interface):
+        """
+            @param n_actions: number of actions the agent can perform from [0, n_actions - 1]
+            @type n_actions: int
+
+            @param server: server name or IP
+            @param port: socket port
+            @param interface: name of the wireless interface, e.g. 'wlan0'
+        """
         super().__init__(n_actions)
         self.server = server
         self.port = port
@@ -144,7 +176,7 @@ class MABAgent(UCBAbstract):
             :return r: the reward of the action taken
             :return success: boolean value indicating if the agent could perform the action or not
         """
-        
+
         # decode the int "action" into the real action
         power = action + 1  # add 1, because get_action() returns 0 to n_actions - 1
         # call the environment to perform the action
@@ -154,18 +186,18 @@ class MABAgent(UCBAbstract):
         features = get_features(self.server, self.port, self.interface)  # contain features with all stations
         self.rewards = []
         for k, v in features.items():
-            self.cat[k].append(v.get("cat",None))
-            self.cbt[k].append(v.get("cbt",None))
-            self.crt[k].append(v.get("crt",None))
-            self.ctt[k].append(v.get("ctt",None))
-            self.txf[k].append(v.get("txf",None))
-            self.txr[k].append(v.get("txr",None))
-            self.txp[k].append(v.get("txp",None))
-            self.txb[k].append(v.get("txb",None))
-            self.rxdrop[k].append(v.get("rxdrop",None))
-            self.rxb[k].append(v.get("rxb",None))
-            self.rxp[k].append(v.get("rxp",None))
-            
+            self.cat[k].append(v.get("cat", None))
+            self.cbt[k].append(v.get("cbt", None))
+            self.crt[k].append(v.get("crt", None))
+            self.ctt[k].append(v.get("ctt", None))
+            self.txf[k].append(v.get("txf", None))
+            self.txr[k].append(v.get("txr", None))
+            self.txp[k].append(v.get("txp", None))
+            self.txb[k].append(v.get("txb", None))
+            self.rxdrop[k].append(v.get("rxdrop", None))
+            self.rxb[k].append(v.get("rxb", None))
+            self.rxp[k].append(v.get("rxp", None))
+
             if(len(self.cat[k]) > 1):
                 # iw trended data
                 self.catDataFrame[k].append(self.cat[k][1] - self.cat[k][0])
@@ -186,48 +218,50 @@ class MABAgent(UCBAbstract):
                 self.dataFrameTx_bitrate[k].append(v.get("tx_bitrate", None))
                 self.dataFrameRx_bitrate[k].append(v.get("rx_bitrate", None))
 
-                self.dictFrame = {  'num_station': self.num_station[k],
-                                    'tx_power': self.dataFrameTxPower[k],
-                                    'cat':self.catDataFrame[k],
-                                    'cbt':self.cbtDataFrame[k], 
-                                    'crt': self.crtDataFrame[k],
-                                    'ctt': self.cttDataFrame[k],
-                                    'avg_signal':self.dataFrameAvg_signal[k],
-                                    'txf': self.txfDataFrame[k],
-                                    'txr': self.txrDataFrame[k],
-                                    'txp': self.txpDataFrame[k],
-                                    'txb': self.txbDataFrame[k],
-                                    'rxdrop': self.rxdropDataFrame[k],
-                                    'rxb': self.rxbDataFrame[k],
-                                    'rxp': self.rxpDataFrame[k],
-                                    'tx_bitrate': self.dataFrameTx_bitrate[k],
-                                    'rx_bitrate': self.dataFrameRx_bitrate[k],
-                                    'bps': 0,
-                                    'delay': 0,
-                                    'jitter': 0,
-                                    'loss': 0                                   
-                                    }
-                                    
+                self.dictFrame = {'num_station': self.num_station[k],
+                                  'tx_power': self.dataFrameTxPower[k],
+                                  'cat': self.catDataFrame[k],
+                                  'cbt': self.cbtDataFrame[k],
+                                  'crt': self.crtDataFrame[k],
+                                  'ctt': self.cttDataFrame[k],
+                                  'avg_signal': self.dataFrameAvg_signal[k],
+                                  'txf': self.txfDataFrame[k],
+                                  'txr': self.txrDataFrame[k],
+                                  'txp': self.txpDataFrame[k],
+                                  'txb': self.txbDataFrame[k],
+                                  'rxdrop': self.rxdropDataFrame[k],
+                                  'rxb': self.rxbDataFrame[k],
+                                  'rxp': self.rxpDataFrame[k],
+                                  'tx_bitrate': self.dataFrameTx_bitrate[k],
+                                  'rx_bitrate': self.dataFrameRx_bitrate[k],
+                                  'bps': 0,
+                                  'delay': 0,
+                                  'jitter': 0,
+                                  'loss': 0
+                                  }
+
                 self.dataFrame = pd.DataFrame(data=self.dictFrame)
                 """
                     TODO: Check MIN MAX
                 """
                 # ignore the first two
                 if len(self.dataFrame) > 2:
-                    
-                    window = create_window(self.min_max_scaler.transform(self.dataFrame.iloc[self.indexIloc :self.indexIloc +  args.timestamp].values), args.timestamp)
-                    X = window[:,:,:16]
-                    calc_qos = self.qos_model.predict(X)                    
-                    power_scale = (power - 1)/(15-1)
+
+                    window = create_window(self.min_max_scaler.transform(self.dataFrame.iloc[self.indexIloc: self.indexIloc + args.timestamp].values), args.timestamp)
+                    X = window[:, :, :16]
+                    calc_qos = self.qos_model.predict(X)
+                    power_scale = (power - 1) / (15 - 1)
                     r = calc_reward(calc_qos, power_scale)
                     scale_calc = list((calc_qos) * (self.min_max_scaler.data_max_[16:17] - self.min_max_scaler.data_min_[16:17]) + self.min_max_scaler.data_min_[16:17])
                     revers = ''.join(str(e) for e in scale_calc)
-                    
-                    logTime = "Time;{};MAC;{};QoS;{};QoSScalar;{};Reward;{};Power;{};action;{}".format(datetime.datetime.now().timestamp(), 
-                    k, calc_qos, revers,r,power, action)
+
+                    logTime = "Time;{};MAC;{};QoS;{};QoSScalar;{};Reward;{};Power;{};action;{}".format(datetime.datetime.now().timestamp(),
+                                                                                                       k, calc_qos, revers,r,power, action
+                                                                                                       )
                     LOG.info(logTime)
 
                     self.rewards.append(r)
+
                 # delete first iten
                 del self.cat[k][0:1]
                 del self.cbt[k][0:1]
@@ -240,7 +274,7 @@ class MABAgent(UCBAbstract):
                 del self.rxdrop[k][0:1]
                 del self.rxb[k][0:1]
                 del self.rxp[k][0:1]
-            
+
         if len(self.dataFrame) > 2:
             self.indexIloc = self.indexIloc + 1
         #self.reward = np.average(self.rewards)
