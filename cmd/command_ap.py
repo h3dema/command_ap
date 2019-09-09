@@ -158,7 +158,6 @@ def get_iw_info(interface, path_iw=__DEFAULT_IW_PATH):
         @rtype: dict
     """
     cmd = "{} dev {} info".format(os.path.join(path_iw, 'iw'), interface)
-    print("interface", interface)
     LOG.debug(cmd)
     with os.popen(cmd) as p:
         ret = p.read().replace('\t', '').split('\n')

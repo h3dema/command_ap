@@ -64,7 +64,7 @@ if __name__ == "__main__":
     else:
         url = args.url
 
-    print(url)
+    # print(url)
     conn.request(method='GET', url=url)
     resp = conn.getresponse()
     print("status", resp.status)

@@ -112,7 +112,6 @@ class myHandler(BaseHTTPRequestHandler):
              'wdev': '0x1', 'center1': '2437MHz'}
         @rtype: dict
         """
-        print(">>>", self.query)
         iface = self.query.get('iface', [''])[0]
         info = get_iw_info(interface=iface)
         LOG.debug(info)
