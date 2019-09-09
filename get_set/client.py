@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     conn = http.client.HTTPConnection(args.server, args.port)
 
-    if args.url in ['/info', '/get_iwconfig',
+    if args.url in ['/get_info', '/get_iwconfig',
                     '/get_power',
                     '/get_stations', '/get_num_stations',
                     ]:
@@ -64,6 +64,7 @@ if __name__ == "__main__":
     else:
         url = args.url
 
+    print(url)
     conn.request(method='GET', url=url)
     resp = conn.getresponse()
     print("status", resp.status)

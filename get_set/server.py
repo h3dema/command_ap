@@ -112,6 +112,7 @@ class myHandler(BaseHTTPRequestHandler):
              'wdev': '0x1', 'center1': '2437MHz'}
         @rtype: dict
         """
+        print(">>>", self.query)
         iface = self.query.get('iface', [''])[0]
         info = get_iw_info(interface=iface)
         LOG.debug(info)
@@ -126,7 +127,7 @@ class myHandler(BaseHTTPRequestHandler):
          'interface': 'wlan0'}
 
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         r = get_iwconfig_info(interface=iface)
         self.send_dictionary(r)
 
@@ -145,7 +146,7 @@ class myHandler(BaseHTTPRequestHandler):
              }
 
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         r = get_ifconfig(interface=iface)
         self.send_dictionary(r)
 
@@ -154,7 +155,7 @@ class myHandler(BaseHTTPRequestHandler):
 
         @return: the tx power of iface
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         pwr = get_power(interface=iface)
         self.send_dictionary({'txpower': pwr})
 
@@ -163,7 +164,7 @@ class myHandler(BaseHTTPRequestHandler):
 
             @return: set the tx power of iface to new_power
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         new_power = self.query.get('new_power', [-1])[0]
         if len(new_power) > 0:
             set_iw_power(interface=iface, new_power=new_power)
@@ -175,7 +176,7 @@ class myHandler(BaseHTTPRequestHandler):
             @return: new channel in a dictionary format {'channel': new_channel}
             @rtype: dict
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         new_channel = int(self.query.get('new_channel', [-1])[0])
         change_channel(interface=iface, new_channel=new_channel)
         self.send_dictionary({'channel': new_channel})
@@ -215,7 +216,7 @@ class myHandler(BaseHTTPRequestHandler):
              }
             @rtype: dict
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         stations = get_iw_stations(interface=iface)
         self.send_dictionary(stations)
 
@@ -225,7 +226,7 @@ class myHandler(BaseHTTPRequestHandler):
         @return: number of stations
         @rtype: int
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         stations = get_iw_stations(interface=iface)
         self.send_dictionary({'num_stations': len(stations)})
 
@@ -239,7 +240,7 @@ class myHandler(BaseHTTPRequestHandler):
                  2472: {},
             @rtype: dict
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         survey = get_iw_survey(interface=iface)
         self.send_dictionary(survey)
 
@@ -262,7 +263,7 @@ class myHandler(BaseHTTPRequestHandler):
                                    'beacon interval': 102}
              }
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         trigger_scan(interface=iface)
         aps = get_iw_scan(interface=iface)
         self.send_dictionary(aps)
@@ -271,7 +272,7 @@ class myHandler(BaseHTTPRequestHandler):
         """ return the result from iw scan dump
             @return: list[str] each entry is a detected mac
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         trigger_scan(interface=iface)
         aps = get_iw_scan_mac(interface=iface)
         self.send_dictionary(aps)
@@ -380,7 +381,7 @@ class myHandler(BaseHTTPRequestHandler):
                 }
 
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         survey = get_iw_survey(interface=iface)
         k = [k for k in survey if survey[k].get('in use', False)][0]  # get only the channel in use
 
@@ -417,7 +418,7 @@ class myHandler(BaseHTTPRequestHandler):
         """
             @return: [[timestamp, FR, frame_loss, SBR, PLR], ...]
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         sta_mac_mapping_str = self.query.get('macs', [''])[0]
         sta_mac_mapping = json.loads(sta_mac_mapping_str.replace("'", "\""))
         # print(sta_mac_mapping)
@@ -490,7 +491,7 @@ class myHandler(BaseHTTPRequestHandler):
         """ @return: [num_stations, BER, AMPDU, traffic_load]
                      needed to compute the MOS_AP
         """
-        iface = self.query.get('iface', [''])[0]
+        iface = self.query.get('iface', ['wlan0'])[0]
         #  number of competing stations: performance of the wireless network degrades withincreasing number of users,
         num_stations = len(get_iw_stations(interface=iface))
 

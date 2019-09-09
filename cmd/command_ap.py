@@ -63,6 +63,7 @@ def get_ifconfig(interface, path_ifconfig=__PATH_IFCONFIG):
         @rtype: dict
     """
     cmd = "{} {}".format(os.path.join(path_ifconfig, 'ifconfig'), interface)
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         ret = decode_ifconfig(p.readlines())
     LOG.debug("ifconfig: {}", ret)
@@ -79,6 +80,7 @@ def get_iw_stations(interface, path_iw=__DEFAULT_IW_PATH):
         @rtype: dict
     """
     cmd = "{} dev {} station dump".format(os.path.join(path_iw, 'iw'), interface)
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         data = p.read().replace('\t', '').split('\n')
     result = decode_iw_station(data)
@@ -96,6 +98,7 @@ def get_status(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
         @rtype: dict
     """
     cmd = "{} status".format(os.path.join(path_hostapd_cli, 'hostapd_cli'))
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         data = p.read()
     ret = decode_hostapd_status(data)
@@ -122,6 +125,7 @@ def change_channel(interface, new_channel, count=1, ht_type=None, path_hostapd_c
     if ht_type in ['ht', 'vht']:
         params += ' ' + ht_type
     cmd = "{} {}".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI), params)
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         # notice that if you to change to the current channel, the program returns FAIL
         ret = p.read().find('OK') >= 0
@@ -136,6 +140,7 @@ def get_stations(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
         @return: dictionary of dictionary
     """
     cmd = "{} all_sta".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI))
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_hostapd_station(data)
@@ -153,6 +158,8 @@ def get_iw_info(interface, path_iw=__DEFAULT_IW_PATH):
         @rtype: dict
     """
     cmd = "{} dev {} info".format(os.path.join(path_iw, 'iw'), interface)
+    print("interface", interface)
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         ret = p.read().replace('\t', '').split('\n')
         result = []
@@ -187,6 +194,7 @@ def get_iwconfig_info(interface, path_iwconfig=__DEFAULT_IWCONFIG_PATH):
         @rtype: dict
     """
     cmd = "{} {}".format(os.path.join(path_iwconfig, 'iwconfig'), interface)
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         result = {'interface': interface}
         data = p.read()
@@ -239,6 +247,7 @@ def set_iw_power(interface, new_power, path_iw=__DEFAULT_IW_PATH):
         cmd = "{} dev {} set txpower fixed {}".format(iw_cmd, interface, new_power)
     else:
         return -1  # error
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         ret = p.read()
     return ret
@@ -253,6 +262,7 @@ def disassociate_sta(mac_sta, path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
         @rtype: bool
     """
     cmd = "{} disassociate {}".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI), mac_sta)
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         ret = p.read()
     return 'OK' in ret
@@ -272,6 +282,7 @@ def get_config(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
                             'wps_state': 'disabled'}
     """
     cmd = "{} get_config".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI))
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         result = p.read().split('\n')
     result.pop(0)  # remove first line (blank line)
@@ -288,6 +299,7 @@ def get_iw_survey(interface, path_iw=__DEFAULT_IW_PATH):
         @return: decoded information from survey
     """
     cmd = "{} dev {} survey dump".format(os.path.join(path_iw, 'iw'), interface)
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_survey(data)
@@ -303,6 +315,7 @@ def get_iw_scan_full(interface, path_iw=__DEFAULT_IW_PATH):
         @return: decoded information from scan dump
     """
     cmd = "sudo {} dev {} scan dump".format(os.path.join(path_iw, 'iw'), interface)
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_scan(data)
@@ -318,6 +331,7 @@ def get_iw_scan_mac(interface, path_iw=__DEFAULT_IW_PATH):
         @return: decoded information from scan dump, only the detected MACs
     """
     cmd = "sudo {} dev {} scan dump 2>&1".format(os.path.join(path_iw, 'iw'), interface)
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_scan_mac(data)
@@ -333,6 +347,7 @@ def get_iw_scan(interface, path_iw=__DEFAULT_IW_PATH):
         @return: decoded information from scan dump, only the detected MACs
     """
     cmd = "sudo {} dev {} scan dump 2>&1".format(os.path.join(path_iw, 'iw'), interface)
+    LOG.debug(cmd)
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_scan_basic(data)
@@ -350,6 +365,7 @@ def trigger_scan(interface, path_iw=__DEFAULT_IW_PATH):
         @return: nothing
     """
     cmd = "sudo {} dev {} scan trigger".format(os.path.join(path_iw, 'iw'), interface)
+    LOG.debug(cmd)
     os.system(cmd)
 
 
