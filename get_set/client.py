@@ -18,7 +18,11 @@ import sys
     does not cover all available commands.
     see serve.py
 """
-valid_urls = ['/', '/test', '/info', '/get_power', '/set_power', '/iwconfig', '/get_features']
+valid_urls = ['/', '/test', '/get_info', '/get_power', '/set_power',
+              '/get_features', '/get_iwconfig',
+              '/get_stations',
+              '/get_num_stations',
+              ]
 
 
 if __name__ == "__main__":
@@ -39,7 +43,10 @@ if __name__ == "__main__":
 
     conn = http.client.HTTPConnection(args.server, args.port)
 
-    if args.url in ['/info', '/iwconfig', '/get_power']:
+    if args.url in ['/info', '/get_iwconfig',
+                    '/get_power',
+                    '/get_stations', '/get_num_stations',
+                    ]:
         params = {'iface': args.interface}
         q = urllib.parse.urlencode(params)
         url = "{}?{}".format(args.url, q)
@@ -61,8 +68,10 @@ if __name__ == "__main__":
     resp = conn.getresponse()
     print("status", resp.status)
     if resp.status == 200:
-        if args.url in ['/test', '/info', '/get_power', '/iwconfig', '/get_features']:
             """decode dictionary"""
-            data = pickle.loads(resp.read())
-            print("received", data.values())
-
+            try:
+                data = pickle.loads(resp.read())
+                print(data)
+            # print("received", data.values())
+            except:
+                pass

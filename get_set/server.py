@@ -56,7 +56,7 @@ from get_set.server_ffox import SrvPosts
 from get_set.server_ffox import ffox_memory
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 LOG = logging.getLogger('REST_SERVER')
 
 # creates a global var 'httpd' that receives the httpd handle that runs in the thread,

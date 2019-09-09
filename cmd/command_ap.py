@@ -13,6 +13,7 @@ import os
 import argparse
 import re
 import glob
+import logging
 
 from cmd.xmit import decode_xmit
 from cmd.ifconfig import decode_ifconfig
@@ -21,6 +22,9 @@ from cmd.station import decode_iw_station, decode_hostapd_status, decode_hostapd
 from cmd.survey import decode_survey
 from cmd.scan import decode_scan, decode_scan_mac, decode_scan_basic
 
+
+logging.basicConfig(level=logging.DEBUG)
+LOG = logging.getLogger('CMD')
 
 valid_frequencies = [2412 + i * 5 for i in range(13)]
 __HOSTAPD_CLI = "hostapd_cli"
@@ -45,6 +49,7 @@ def get_xmit(phy_iface='phy0'):
         return dict()  # error, didn't find ath9k or ath10k
     path_to_xmit = os.path.join(path_to_phy, dir_athk, 'xmit')
     ret = decode_xmit(path_to_xmit)
+    LOG.DEBUG("xmit: {}", ret)
     return ret
 
 
@@ -60,6 +65,7 @@ def get_ifconfig(interface, path_ifconfig=__PATH_IFCONFIG):
     cmd = "{} {}".format(os.path.join(path_ifconfig, 'ifconfig'), interface)
     with os.popen(cmd) as p:
         ret = decode_ifconfig(p.readlines())
+    LOG.DEBUG("ifconfig: {}", ret)
     return ret
 
 
@@ -76,6 +82,7 @@ def get_iw_stations(interface, path_iw=__DEFAULT_IW_PATH):
     with os.popen(cmd) as p:
         data = p.read().replace('\t', '').split('\n')
     result = decode_iw_station(data)
+    LOG.DEBUG("iw stations: {}", result)
     return result
 
 
@@ -92,6 +99,7 @@ def get_status(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
     with os.popen(cmd) as p:
         data = p.read()
     ret = decode_hostapd_status(data)
+    LOG.DEBUG("hostapd status: {}", ret)
     return ret
 
 
@@ -117,6 +125,7 @@ def change_channel(interface, new_channel, count=1, ht_type=None, path_hostapd_c
     with os.popen(cmd) as p:
         # notice that if you to change to the current channel, the program returns FAIL
         ret = p.read().find('OK') >= 0
+    LOG.DEBUG("change chann: {}", ret)
     return ret
 
 
@@ -130,6 +139,7 @@ def get_stations(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_hostapd_station(data)
+    LOG.DEBUG("hostapd stations: {}", result)
     return result
 
 
@@ -162,6 +172,7 @@ def get_iw_info(interface, path_iw=__DEFAULT_IW_PATH):
             else:
                 result.append(ret[i].split())
         result = dict([v for v in result if len(v) == 2])
+    LOG.DEBUG("iw info: {}", result)
     return result
 
 
@@ -181,6 +192,7 @@ def get_iwconfig_info(interface, path_iwconfig=__DEFAULT_IWCONFIG_PATH):
         data = p.read()
         r = decode_iwconfig(data)
         result.update(r)
+    LOG.DEBUG("iwconfig: {}", result)
     return result
 
 
@@ -205,6 +217,7 @@ def get_power(interface, path_iw=__DEFAULT_IW_PATH, path_iwconfig=__DEFAULT_IWCO
             txpower = float(v)
         except ValueError:
             pass  # nothing to do
+    LOG.DEBUG("txpower: {}", txpower)
     return txpower
 
 
