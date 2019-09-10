@@ -91,7 +91,9 @@ funcs = {'droppedFPS': lambda x: decodeInt(x),
          }
 
 map_ip_to_sta = {'192.168.0.11': 'cloud',
+                 '150.164.10.50': 'storm',
                  '192.168.0.12': 'storm',
+                 '150.164.10.47': 'storm',
                  '150.164.10.18': 'vpn',
                  }
 
