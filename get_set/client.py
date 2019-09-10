@@ -18,10 +18,17 @@ import sys
     does not cover all available commands.
     see serve.py
 """
-valid_urls = ['/', '/test', '/get_info', '/get_power', '/set_power',
-              '/get_features', '/get_iwconfig',
+valid_urls = ['/', '/test',
+              '/get_info',
+              '/get_power', '/set_power',
+              '/get_channel',
+              '/get_iwconfig',
               '/get_stations',
               '/get_num_stations',
+              '/get_scan', '/get_scan_mac',
+              '/get_xmit',
+              '/get_features',
+              '/get_mos_client', '/get_mos_hybrid', '/get_mos_ap'
               ]
 
 
@@ -38,7 +45,7 @@ if __name__ == "__main__":
 
     if args.url not in valid_urls:
         print("valid urls:", ", ".join(valid_urls))
-        print(parser.print_help())
+        parser.print_help()
         sys.exit(0)
 
     conn = http.client.HTTPConnection(args.server, args.port)
@@ -65,7 +72,11 @@ if __name__ == "__main__":
         url = args.url
 
     # print(url)
-    conn.request(method='GET', url=url)
+    try:
+        conn.request(method='GET', url=url)
+    except ConnectionRefusedError:
+        print("Error: Cannot connect to the server")
+        sys.exit(1)
     resp = conn.getresponse()
     print("status", resp.status)
     if resp.status == 200:
