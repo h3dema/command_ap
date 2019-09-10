@@ -313,7 +313,10 @@ def get_iw_scan_full(interface, path_iw=__DEFAULT_IW_PATH):
 
         @return: decoded information from scan dump
     """
-    cmd = "sudo {} dev {} scan dump".format(os.path.join(path_iw, 'iw'), interface)
+    if get_iwconfig_info(args.iface)['Mode'] == 'Master':
+        cmd = "sudo {} dev {} scan ap-force".format(os.path.join(path_iw, 'iw'), interface)
+    else:
+        cmd = "sudo {} dev {} scan dump".format(os.path.join(path_iw, 'iw'), interface)
     LOG.debug(cmd)
     with os.popen(cmd) as p:
         data = p.read()

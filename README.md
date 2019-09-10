@@ -47,3 +47,27 @@ make
 sudo make install
 ```
 
+## Python dependencies
+
+
+
+```
+sudo -H python3 -m pip install pip --upgrade
+sudo -H python3 -m pip install numpy scipy sklearn
+sudo -H python3 -m pip install six requests html5lib urllib 
+sudo -H python3 -m pip install matplotlib seaborn
+sudo -H python3 -m pip install tables natsort
+sudo -H python3 -m pip install tensorflow
+sudo -H python3 -m pip install keras
+```
+
+If you get `ERROR: Cannot uninstall 'six'`, remove the OS package, using 
+```
+sudo apt-get remove python-six
+```
+
+
+If you get ` ERROR:: Could not find a local HDF5 installation`, then:
+```
+apt-get install hdf5-tools libhdf5-7 libhdf5-dev
+```
