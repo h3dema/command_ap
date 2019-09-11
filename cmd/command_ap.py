@@ -305,13 +305,24 @@ def get_iw_survey(interface, path_iw=__DEFAULT_IW_PATH):
     return result
 
 
-def get_scan_command(interface, path_iw=__DEFAULT_IW_PATH):
-    if get_iwconfig_info(args.iface)['Mode'].lower() == 'master':
+def get_scan(interface, path_iw=__DEFAULT_IW_PATH):
+    """ helper function that commands iw dev <interface> scan dump or scan ap-force.
+        some APs only accept scan ap-force.
+        used by get_iw_scan_full(), get_iw_scan_mac() and get_iw_scan().
+
+        @param interface: interface to scan
+        @param path_iw: path to iw
+
+        @return: return the output of the command
+    """
+    if get_iwconfig_info(interface)['Mode'].lower() == 'master':
         cmd = "sudo {} dev {} scan ap-force 2>&1".format(os.path.join(path_iw, 'iw'), interface)
     else:
         cmd = "sudo {} dev {} scan dump 2>&1".format(os.path.join(path_iw, 'iw'), interface)
     LOG.debug(cmd)
-    return cmd
+    with os.popen(cmd) as p:
+        data = p.read()
+    return data
 
 
 def get_iw_scan_full(interface, path_iw=__DEFAULT_IW_PATH):
@@ -322,9 +333,7 @@ def get_iw_scan_full(interface, path_iw=__DEFAULT_IW_PATH):
 
         @return: decoded information from scan dump
     """
-    cmd = get_scan_command(interface, path_iw)
-    with os.popen(cmd) as p:
-        data = p.read()
+    data = get_scan(interface, path_iw)
     result = decode_scan(data)
     return result
 
@@ -337,9 +346,7 @@ def get_iw_scan_mac(interface, path_iw=__DEFAULT_IW_PATH):
 
         @return: decoded information from scan dump, only the detected MACs
     """
-    cmd = get_scan_command(interface, path_iw)
-    with os.popen(cmd) as p:
-        data = p.read()
+    data = get_scan(interface, path_iw)
     result = decode_scan_mac(data)
     return result
 
@@ -352,9 +359,7 @@ def get_iw_scan(interface, path_iw=__DEFAULT_IW_PATH):
 
         @return: decoded information from scan dump, only the detected MACs
     """
-    cmd = get_scan_command(interface, path_iw)
-    with os.popen(cmd) as p:
-        data = p.read()
+    data = get_scan(interface, path_iw)
     result = decode_scan_basic(data)
     return result
 
