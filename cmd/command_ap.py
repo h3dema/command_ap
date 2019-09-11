@@ -305,6 +305,15 @@ def get_iw_survey(interface, path_iw=__DEFAULT_IW_PATH):
     return result
 
 
+def get_scan_command(interface, path_iw=__DEFAULT_IW_PATH):
+    if get_iwconfig_info(args.iface)['Mode'].lower() == 'master':
+        cmd = "sudo {} dev {} scan ap-force 2>&1".format(os.path.join(path_iw, 'iw'), interface)
+    else:
+        cmd = "sudo {} dev {} scan dump 2>&1".format(os.path.join(path_iw, 'iw'), interface)
+    LOG.debug(cmd)
+    return cmd
+
+
 def get_iw_scan_full(interface, path_iw=__DEFAULT_IW_PATH):
     """ execute command "iw dev <interface> scan dump"
 
@@ -313,11 +322,7 @@ def get_iw_scan_full(interface, path_iw=__DEFAULT_IW_PATH):
 
         @return: decoded information from scan dump
     """
-    if get_iwconfig_info(args.iface)['Mode'].lower() == 'master':
-        cmd = "sudo {} dev {} scan ap-force".format(os.path.join(path_iw, 'iw'), interface)
-    else:
-        cmd = "sudo {} dev {} scan dump".format(os.path.join(path_iw, 'iw'), interface)
-    LOG.debug(cmd)
+    cmd = get_scan_command(interface, path_iw)
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_scan(data)
@@ -332,8 +337,7 @@ def get_iw_scan_mac(interface, path_iw=__DEFAULT_IW_PATH):
 
         @return: decoded information from scan dump, only the detected MACs
     """
-    cmd = "sudo {} dev {} scan dump 2>&1".format(os.path.join(path_iw, 'iw'), interface)
-    LOG.debug(cmd)
+    cmd = get_scan_command(interface, path_iw)
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_scan_mac(data)
@@ -348,8 +352,7 @@ def get_iw_scan(interface, path_iw=__DEFAULT_IW_PATH):
 
         @return: decoded information from scan dump, only the detected MACs
     """
-    cmd = "sudo {} dev {} scan dump 2>&1".format(os.path.join(path_iw, 'iw'), interface)
-    LOG.debug(cmd)
+    cmd = get_scan_command(interface, path_iw)
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_scan_basic(data)
