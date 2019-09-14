@@ -156,5 +156,5 @@ class SrvPosts(BaseHTTPRequestHandler):
         data['timestamp'] = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         ip = self.client_address[0]
         data['host'] = ip if ip not in map_ip_to_sta else map_ip_to_sta[ip]
-        # LOG.info(data)
+        LOG.info(data)
         ffox_memory.push(data)
