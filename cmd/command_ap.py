@@ -49,7 +49,7 @@ def get_xmit(phy_iface='phy0'):
         return dict()  # error, didn't find ath9k or ath10k
     path_to_xmit = os.path.join(path_to_phy, dir_athk, 'xmit')
     ret = decode_xmit(path_to_xmit)
-    LOG.debug("xmit: {}", ret)
+    LOG.debug("xmit: {}".format(ret))
     return ret
 
 
@@ -62,11 +62,11 @@ def get_ifconfig(interface, path_ifconfig=__PATH_IFCONFIG):
         @return: the ifconfig fields
         @rtype: dict
     """
-    cmd = "{} {}".format(os.path.join(path_ifconfig, 'ifconfig'), interface)
+    cmd = "sudo {} {}".format(os.path.join(path_ifconfig, 'ifconfig'), interface)
     LOG.debug(cmd)
     with os.popen(cmd) as p:
         ret = decode_ifconfig(p.readlines())
-    LOG.debug("ifconfig: {}", ret)
+    LOG.debug("ifconfig: {}".format(ret))
     return ret
 
 
@@ -79,12 +79,12 @@ def get_iw_stations(interface, path_iw=__DEFAULT_IW_PATH):
         @return: the command fields
         @rtype: dict
     """
-    cmd = "{} dev {} station dump".format(os.path.join(path_iw, 'iw'), interface)
+    cmd = "sudo {} dev {} station dump".format(os.path.join(path_iw, 'iw'), interface)
     LOG.debug(cmd)
     with os.popen(cmd) as p:
         data = p.read().replace('\t', '').split('\n')
     result = decode_iw_station(data)
-    LOG.debug("iw stations: {}", result)
+    LOG.debug("iw stations: {}".format(result))
     return result
 
 
@@ -97,12 +97,12 @@ def get_status(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
         @return: the returned command fields
         @rtype: dict
     """
-    cmd = "{} status".format(os.path.join(path_hostapd_cli, 'hostapd_cli'))
+    cmd = "sudo {} status".format(os.path.join(path_hostapd_cli, 'hostapd_cli'))
     LOG.debug(cmd)
     with os.popen(cmd) as p:
         data = p.read()
     ret = decode_hostapd_status(data)
-    LOG.debug("hostapd status: {}", ret)
+    LOG.debug("hostapd status: {}".format(ret))
     return ret
 
 
@@ -124,12 +124,12 @@ def change_channel(interface, new_channel, count=1, ht_type=None, path_hostapd_c
     params = "-i {} chan_switch {} {}".format(interface, count, frequency)
     if ht_type in ['ht', 'vht']:
         params += ' ' + ht_type
-    cmd = "{} {}".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI), params)
+    cmd = "sudo {} {}".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI), params)
     LOG.debug(cmd)
     with os.popen(cmd) as p:
         # notice that if you to change to the current channel, the program returns FAIL
         ret = p.read().find('OK') >= 0
-    LOG.debug("change chann: {}", ret)
+    LOG.debug("change chann: {}".format(ret))
     return ret
 
 
@@ -139,12 +139,12 @@ def get_stations(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
         @param path_hostapd_cli: path to hostapd_cli
         @return: dictionary of dictionary
     """
-    cmd = "{} all_sta".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI))
+    cmd = "sudo {} all_sta".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI))
     LOG.debug(cmd)
     with os.popen(cmd) as p:
         data = p.read()
     result = decode_hostapd_station(data)
-    LOG.debug("hostapd stations: {}", result)
+    LOG.debug("hostapd stations: {}".format(result))
     return result
 
 
@@ -157,7 +157,7 @@ def get_iw_info(interface, path_iw=__DEFAULT_IW_PATH):
         @return: the command fields
         @rtype: dict
     """
-    cmd = "{} dev {} info".format(os.path.join(path_iw, 'iw'), interface)
+    cmd = "sudo {} dev {} info".format(os.path.join(path_iw, 'iw'), interface)
     LOG.debug(cmd)
     with os.popen(cmd) as p:
         ret = p.read().replace('\t', '').split('\n')
@@ -178,7 +178,7 @@ def get_iw_info(interface, path_iw=__DEFAULT_IW_PATH):
             else:
                 result.append(ret[i].split())
         result = dict([v for v in result if len(v) == 2])
-    LOG.debug("iw info: {}", result)
+    LOG.debug("iw info: {}".format(result))
     return result
 
 
@@ -199,7 +199,7 @@ def get_iwconfig_info(interface, path_iwconfig=__DEFAULT_IWCONFIG_PATH):
         data = p.read()
         r = decode_iwconfig(data)
         result.update(r)
-    LOG.debug("iwconfig: {}", result)
+    LOG.debug("iwconfig: {}".format(result))
     return result
 
 
@@ -224,7 +224,7 @@ def get_power(interface, path_iw=__DEFAULT_IW_PATH, path_iwconfig=__DEFAULT_IWCO
             txpower = float(v)
         except ValueError:
             pass  # nothing to do
-    LOG.debug("txpower: {}", txpower)
+    LOG.debug("txpower: {}".format(txpower))
     return txpower
 
 
@@ -240,10 +240,10 @@ def set_iw_power(interface, new_power, path_iw=__DEFAULT_IW_PATH):
     """
     iw_cmd = "{}".format(os.path.join(path_iw, 'iw'))
     if new_power == 'auto':
-        cmd = "{} dev {} set txpower auto".format(iw_cmd, interface)
+        cmd = "sudo {} dev {} set txpower auto".format(iw_cmd, interface)
     elif isinstance(new_power, int) or isinstance(new_power, float):
         new_power = int(float(new_power) * 100)
-        cmd = "{} dev {} set txpower fixed {}".format(iw_cmd, interface, new_power)
+        cmd = "sudo {} dev {} set txpower fixed {}".format(iw_cmd, interface, new_power)
     else:
         return -1  # error
     LOG.debug(cmd)
@@ -260,7 +260,7 @@ def disassociate_sta(mac_sta, path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
         @return: if the command succeded
         @rtype: bool
     """
-    cmd = "{} disassociate {}".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI), mac_sta)
+    cmd = "sudo {} disassociate {}".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI), mac_sta)
     LOG.debug(cmd)
     with os.popen(cmd) as p:
         ret = p.read()
@@ -280,7 +280,7 @@ def get_config(path_hostapd_cli=__DEFAULT_HOSTAPD_CLI_PATH):
                             'wpa': '2',
                             'wps_state': 'disabled'}
     """
-    cmd = "{} get_config".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI))
+    cmd = "sudo {} get_config".format(os.path.join(path_hostapd_cli, __HOSTAPD_CLI))
     LOG.debug(cmd)
     with os.popen(cmd) as p:
         result = p.read().split('\n')
@@ -297,7 +297,7 @@ def get_iw_survey(interface, path_iw=__DEFAULT_IW_PATH):
 
         @return: decoded information from survey
     """
-    cmd = "{} dev {} survey dump".format(os.path.join(path_iw, 'iw'), interface)
+    cmd = "sudo {} dev {} survey dump".format(os.path.join(path_iw, 'iw'), interface)
     LOG.debug(cmd)
     with os.popen(cmd) as p:
         data = p.read()
