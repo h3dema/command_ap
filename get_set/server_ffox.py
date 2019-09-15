@@ -137,6 +137,7 @@ class SrvPosts(BaseHTTPRequestHandler):
     def do_POST(self):
         """get the data, and save it into memory (a global variable called ffox_memory)
         """
+        LOG.debug("POST received")
         content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
         post_data = self.rfile.read(content_length).decode('utf-8')
         q = urllib.parse.parse_qs(post_data)
@@ -156,5 +157,5 @@ class SrvPosts(BaseHTTPRequestHandler):
         data['timestamp'] = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         ip = self.client_address[0]
         data['host'] = ip if ip not in map_ip_to_sta else map_ip_to_sta[ip]
-        LOG.info(data)
+        LOG.info("Data from POST: {}".format(data))
         ffox_memory.push(data)
