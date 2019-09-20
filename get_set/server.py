@@ -577,8 +577,8 @@ class myHandler(BaseHTTPRequestHandler):
                     srt = not_running / interval
                 else:
                     srt = 0
-                rt_1 = last_data.get('reportedBitrate', 0) / MAX_REPORTED_BITRATE
                 rt = actual_data.get('reportedBitrate', 0) / MAX_REPORTED_BITRATE
+                rt_1 = last_data.get('reportedBitrate', rt) / MAX_REPORTED_BITRATE
                 # print([rt, rt_1, srt])
                 ret.append([rt, rt_1, srt, sta])
                 last_data = actual_data
