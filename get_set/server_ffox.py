@@ -32,7 +32,6 @@ The client (firefox) sends the following json data:
 'download': {'avg': 0.12, 'low': 0.17, 'high': 0.15},
 
 """
-import logging
 import datetime
 import threading
 
@@ -41,10 +40,8 @@ import numpy as np
 from http.server import BaseHTTPRequestHandler
 import urllib.parse
 
-from decode_mos import effective_mos
-
-
-LOG = logging.getLogger('SERVER_FFOX')
+from get_set.decode_mos import effective_mos
+from get_set.decode_mos import LOG
 
 
 def decode3field(x):
@@ -82,7 +79,6 @@ funcs = {'droppedFPS': lambda x: decodeInt(x),
          'chunkData[quality]': lambda x: decodeInt(x),
          'chunkData[bandwidth]': lambda x: decodeInt(x),
          'chunkData[representationId]': lambda x: decodeInt(x),
-         'chunkData[segmentType]': lambda x: decodeInt(x),
          'playing[quality]': lambda x: decodeInt(x),
          'playing[time]': lambda x: float(x),
          'reportedBitrate': lambda x: int(x.split()[0]),
@@ -142,8 +138,8 @@ class SrvPosts(BaseHTTPRequestHandler):
         """
         content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
         post_data = self.rfile.read(content_length).decode('utf-8')
-        LOG.debug("POST received: {}".format(post_data))
         q = urllib.parse.parse_qs(post_data)
+        LOG.debug("POST received: {}".format(q))
         for k in q:
             q[k] = q[k][0]
 
@@ -163,7 +159,7 @@ class SrvPosts(BaseHTTPRequestHandler):
 
         # calculate the MOS based on the pre compiled data from the video
         # this only applies to the Bunny video used in the experiments
-        # data['mos'] = effective_mos(data)
+        data['mos'] = effective_mos(data)
 
         LOG.info("Data from POST: {}".format(data))
         ffox_memory.push(data)

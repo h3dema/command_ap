@@ -549,6 +549,7 @@ class myHandler(BaseHTTPRequestHandler):
         """
         # get from memory
         data = ffox_memory.pop()
+        LOG.debug(data)
         stations = list(set([d['host'] for d in data]))
         # from data, obtain: rt, rt_1, srt, sta
         ret = []  # each line contains (R_t, R_t1, SR) --> contains the data to build the MOS
@@ -580,7 +581,7 @@ class myHandler(BaseHTTPRequestHandler):
                 rt = actual_data.get('reportedBitrate', 0) / MAX_REPORTED_BITRATE
                 rt_1 = last_data.get('reportedBitrate', rt) / MAX_REPORTED_BITRATE
                 # print([rt, rt_1, srt])
-                ret.append([rt, rt_1, srt, sta])
+                ret.append([rt, rt_1, srt, actual_data.get('mos', 1), sta])
                 last_data = actual_data
                 break
 
