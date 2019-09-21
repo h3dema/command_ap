@@ -545,7 +545,7 @@ class myHandler(BaseHTTPRequestHandler):
             - srt = not_running_time / (not_running_time + execution_time)
             - r[t-1] is obtained from a saved variable: self.last_rt[client_ip]
 
-            @ return: [rt, rt_1, srt, sta]
+            @ return: [rt, rt_1, srt, actual mos, sta]
         """
         # get from memory
         data = ffox_memory.pop()

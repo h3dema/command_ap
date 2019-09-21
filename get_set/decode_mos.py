@@ -49,9 +49,9 @@ def effective_mos(data):
             t1 = datetime.strptime(data['timestamp'], '%Y%m%d%H%M%S')
             t0 = datetime.strptime(last_data['timestamp'], '%Y%m%d%H%M%S')
             interval = (t1 - t0).seconds
-            # LOG.info("{} {} {}".format(t1, t0, interval))
+            LOG.debug("t1: {} t0:{} interval:{} - index mos {}".format(t1, t0, interval, m))
             if interval > 0:
-                playing_time = data['playing_time'] - last_data['playing_time']
+                playing_time = np.abs(data['playing_time'] - last_data['playing_time'])
                 not_running = max(interval - playing_time, 0)
                 eff_mos = (playing_time * m + not_running) / (playing_time + not_running)
 
