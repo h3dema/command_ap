@@ -124,6 +124,29 @@ class FirefoxDataMemory (object):
 ffox_memory = FirefoxDataMemory()
 
 
+def convert_line_json(in_data, ip):
+    """ receive the line from the json (dash output) from the client and convert it to useful data with MOS
+    """
+    data = dict()
+    for k in funcs:
+        if k in in_data:
+            if 'chunkData' in k:
+                kd = k.replace('chunkData[', '').replace(']', '')
+            elif 'playing' in k:
+                kd = k.replace('[', '_').replace(']', '')
+            else:
+                kd = k
+            data[kd] = funcs[k](in_data[k])
+    data['timestamp'] = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    data['host'] = ip if ip not in map_ip_to_sta else map_ip_to_sta[ip]
+
+    # calculate the MOS based on the pre compiled data from the video
+    # this only applies to the Bunny video used in the experiments
+    data['mos'] = effective_mos(data)
+
+    return data
+
+
 class SrvPosts(BaseHTTPRequestHandler):
     """ receives posts from the client (firefox), and saves the data into a json file
     """
@@ -140,26 +163,10 @@ class SrvPosts(BaseHTTPRequestHandler):
         post_data = self.rfile.read(content_length).decode('utf-8')
         q = urllib.parse.parse_qs(post_data)
         LOG.debug("POST received: {}".format(q))
+        # remove nested []
         for k in q:
             q[k] = q[k][0]
 
-        data = dict()
-        for k in funcs:
-            if k in q:
-                if 'chunkData' in k:
-                    kd = k.replace('chunkData[', '').replace(']', '')
-                elif 'playing' in k:
-                    kd = k.replace('[', '_').replace(']', '')
-                else:
-                    kd = k
-                data[kd] = funcs[k](q[k])
-        data['timestamp'] = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        ip = self.client_address[0]
-        data['host'] = ip if ip not in map_ip_to_sta else map_ip_to_sta[ip]
-
-        # calculate the MOS based on the pre compiled data from the video
-        # this only applies to the Bunny video used in the experiments
-        data['mos'] = effective_mos(data)
-
+        data = convert_line_json(q, ip=self.client_address[0])
         LOG.info("Data from POST: {}".format(data))
         ffox_memory.push(data)
