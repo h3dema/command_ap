@@ -44,6 +44,11 @@ from get_set.decode_mos import effective_mos
 from get_set.decode_mos import LOG
 
 
+MAX_REPORTED_BITRATE = 20000.0
+MAXIMUM_TX_BITRATE = 54.0
+MAX_TX_BYTES_WIFI = MAXIMUM_TX_BITRATE * 1024 * 1024
+
+
 def decode3field(x):
     """
         @param x: a string formatted as "float | float | float" to be converted to a list
