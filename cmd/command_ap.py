@@ -120,6 +120,12 @@ def change_channel(interface, new_channel, count=1, ht_type=None, path_hostapd_c
         @rtype: dict
     """
     assert new_channel > 0 and new_channel <= len(valid_frequencies), "{} not in valid channels".format(new_channel)
+
+    curr_chann = get_channel(interface)
+    if curr_chann == new_channel:
+        LOG.debug("{} same channel. no change needed.".format(new_channel))
+        return True  # nothing to do
+
     frequency = valid_frequencies[new_channel - 1]
     params = "-i {} chan_switch {} {}".format(interface, count, frequency)
     if ht_type in ['ht', 'vht']:
@@ -180,6 +186,11 @@ def get_iw_info(interface, path_iw=__DEFAULT_IW_PATH):
         result = dict([v for v in result if len(v) == 2])
     LOG.debug("iw info: {}".format(result))
     return result
+
+
+def get_channel(interface, path_iw=__DEFAULT_IW_PATH):
+    channel = get_iw_info(interface, path_iw=path_iw).get('channel', -1)
+    return channel
 
 
 def get_iwconfig_info(interface, path_iwconfig=__DEFAULT_IWCONFIG_PATH):
