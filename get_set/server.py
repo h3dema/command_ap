@@ -54,6 +54,7 @@ from cmd.command_ap import change_channel
 
 from get_set.server_ffox import SrvPosts
 from get_set.server_ffox import ffox_memory
+from get_set.server_ffox import MAX_REPORTED_BITRATE, MAXIMUM_TX_BITRATE, MAX_TX_BYTES_WIFI
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -66,9 +67,6 @@ httpd = None
 last_rt = dict()  # save data from AP
 last_tx_bytes = None  # save last read tx_bytes in MOS AP
 last_ampdu = None
-MAX_REPORTED_BITRATE = 20000.0
-MAXIMUM_TX_BITRATE = 54.0
-MAX_TX_BYTES_WIFI = MAXIMUM_TX_BITRATE * 1024 * 1024
 
 
 class myHandler(BaseHTTPRequestHandler):

@@ -47,7 +47,7 @@ def effective_mos(data):
         # LOG.info(last_data['timestamp'] is not None)
         if last_data['timestamp'] is not None:
             t1 = datetime.strptime(data['timestamp'], '%Y%m%d%H%M%S')
-            t0 = datetime.strptime(last_data['timestamp'], '%Y%m%d%H%M%S')
+            t0 = datetime.strptime('last_data'['timestamp'], '%Y%m%d%H%M%S')
             interval = (t1 - t0).seconds
             LOG.debug("t1: {} t0:{} interval:{} - index mos {}".format(t1, t0, interval, m))
             if interval > 0:
