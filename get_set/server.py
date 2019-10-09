@@ -639,6 +639,7 @@ if __name__ == "__main__":
 
         parser.add_argument('--collect-firefox-data', action='store_true', help='creates a local server that receives POSTs from the web clients')
         parser.add_argument('--port-firefox', type=int, default=8081, help='Set the server port to collect data from the firefox client')
+        parser.add_argument('--no-command', action='store_true', help='disable the command server')
         args = parser.parse_args()
 
         if args.debug:
@@ -652,4 +653,5 @@ if __name__ == "__main__":
             t.start()
 
         # run server forever
-        run(args.port)
+        if not args.no_command:
+            run(args.port)
