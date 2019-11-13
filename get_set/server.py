@@ -27,10 +27,6 @@ import argparse
 import pickle
 import logging
 import os
-import numpy as np
-from threading import Thread
-from datetime import datetime
-import json
 
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
@@ -49,12 +45,7 @@ from cmd.command_ap import get_iw_survey
 from cmd.command_ap import get_iw_scan
 from cmd.command_ap import get_iw_scan_mac
 from cmd.command_ap import get_xmit
-from cmd.command_ap import get_phy_with_wlan
 from cmd.command_ap import change_channel
-
-from get_set.server_ffox import SrvPosts
-from get_set.server_ffox import ffox_memory
-from get_set.server_ffox import MAX_REPORTED_BITRATE, MAXIMUM_TX_BITRATE, MAX_TX_BYTES_WIFI
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -406,190 +397,6 @@ class myHandler(BaseHTTPRequestHandler):
         except KeyError:
             self.send_error()
 
-    # ********************************************************
-    #
-    #  this is specific to the Video MOS experiments (Henrique's thesis)
-    #
-    # ********************************************************
-    def get_mos_hybrid(self):
-        """
-            @return: [[timestamp, FR, frame_loss, SBR, PLR], ...]
-        """
-        iface = self.query.get('iface', ['wlan0'])[0]
-        sta_mac_mapping_str = self.query.get('macs', [''])[0]
-        sta_mac_mapping = json.loads(sta_mac_mapping_str.replace("'", "\""))
-        # print(sta_mac_mapping)
-        # get from memory
-        data = ffox_memory.pop()
-        LOG.debug(data)
-        stations = list(set([d['host'] for d in data]))
-        ret = []  # each line contains the data from the clients that compose the client's part of the HYBRID MOS
-        for sta in stations:
-            # get data to process
-            sta_data = [d for d in data if d['host'] == sta and 'playing_time' in d]
-            # print(sta_data)
-            if len(sta_data) == 0:
-                # get next data
-                continue
-            if sta in last_rt:
-                # obtain the parameters
-                last_data = last_rt[sta]
-            else:
-                last_data = sta_data.pop(0)  # get first to perform difference
-            # get differences
-            # * check if there is more than one entry for this station
-            while len(sta_data) > 0:
-                actual_data = sta_data.pop(0)
-                # droppedFPS = actual_data['droppedFPS'] - last_data['droppedFPS']
-                t1 = datetime.strptime(actual_data['timestamp'], '%Y%m%d%H%M%S')
-                t0 = datetime.strptime(last_data['timestamp'], '%Y%m%d%H%M%S')
-                interval = max((t1 - t0).seconds, 0)
-                playing_time = actual_data['playing_time'] - last_data['playing_time']
-                not_running = max(interval - playing_time, 0)
-
-                FR = actual_data['reportedBitrate'] * playing_time / (playing_time + not_running)
-                frame_loss = actual_data['droppedFPS'] - last_data['droppedFPS']
-
-                ret.append([sta, actual_data['timestamp'], FR, frame_loss])
-                last_data = actual_data
-                break
-            last_rt[sta] = last_data  # save for another iteration
-        """
-        * loss rate (PLR)
-            packets = | rx_packets[t] - rx_packets[t-1] |
-            PLR = rxdrop / (packets + rxdrop)
-
-        * send bit rate (SBR): SBR = tx_bitrate / maximum tx_bitrate
-        """
-        stations = get_iw_stations(interface=iface)
-        sta_macs = stations.keys()
-        ret2 = dict()
-        for k in sta_macs:
-            sta = stations[k]
-            h = sta_mac_mapping.get(k, '')
-            ret2[h] = [sta['tx bitrate'] / MAXIMUM_TX_BITRATE,  # SBR
-                       sta['rx drop misc'] / (sta['rx packets'] + sta['rx drop misc']),  # PLR
-                       ]
-        # join ret and ret2
-        result = []  # contains the data to build the MOS
-        for r in ret:
-            try:
-                result.append(r[1:] + ret2[r[0]])
-            except KeyError:
-                # do nothing
-                LOG.debug("get_mos_hybrid: error using key {}".format(r[0]))
-        LOG.debug(result)
-        try:
-            self.send_dictionary(result)
-        except KeyError:
-            self.send_error()
-
-    def get_mos_ap(self):
-        """ @return: [num_stations, BER, AMPDU, traffic_load]
-                     needed to compute the MOS_AP
-        """
-        iface = self.query.get('iface', ['wlan0'])[0]
-        #  number of competing stations: performance of the wireless network degrades withincreasing number of users,
-        num_stations = len(get_iw_stations(interface=iface))
-
-        # Bit Error Rate (BER): variation of the Bit Error Rate (BER) that can cause the MAC frame to be received with errors and trigger retransmissions that canimpact the overall performances of the system2.
-        phy_iface = get_phy_with_wlan(interface=iface)
-        r = get_xmit(phy_iface)
-        tx_failed = np.sum([float(r[k]) for k in r if 'TX-Failed' in k])
-        tx_pkts = np.sum([float(r[k]) for k in r if 'TX-Pkts-All' in k])
-        # 'FER' = 'txf_detrend' / ('txf_detrend' + 'txp_detrend')
-        denom = tx_failed + tx_pkts
-        if denom != 0.0:
-            FER = tx_failed / denom
-        else:
-            FER = 0
-        BER = FER  # !!!!
-
-        # frame aggregation: A-MPDU (MAC Protocol Data Unit) aggregation, allows many MAC frames to combine into one larger aggregated frame3.
-        global last_ampdu
-        curr_ampdu = np.sum([float(r[k]) for k in r if 'AMPDUs Completed' in k])
-        if last_ampdu is None:
-            AMPDU = 0
-        else:
-            AMPDU = curr_ampdu - last_ampdu
-        last_ampdu = curr_ampdu
-
-        # traffic load: percentage of traffic over the maximum throughput of the interface
-        try:
-            tx_bytes = float(get_ifconfig(interface=iface)['tx_bytes'])
-        except ValueError:
-            tx_bytes = 0
-        global last_tx_bytes
-        if last_tx_bytes is None:
-            traffic_load = 0
-        else:
-            traffic_load = (tx_bytes - last_tx_bytes) / MAX_TX_BYTES_WIFI
-        last_tx_bytes = tx_bytes
-
-        result = [num_stations, BER, AMPDU, traffic_load]
-        LOG.debug("num_stations:{} BER:{} AMPDU:{} traffic_load:{}".format(num_stations, BER, AMPDU, traffic_load))
-        try:
-            self.send_dictionary(result)
-        except KeyError:
-            self.send_error()
-
-    def get_mos_client(self):
-        """
-            read from local memory is filled using an node.js server
-            this server receives connections from the clients, and then stores
-            the values in a local json file
-
-            - r[t] = reportedBitrate in time [t] / max_bitrate
-            - srt = not_running_time / (not_running_time + execution_time)
-            - r[t-1] is obtained from a saved variable: self.last_rt[client_ip]
-
-            @ return: [rt, rt_1, srt, actual mos, sta]
-        """
-        # get from memory
-        data = ffox_memory.pop()
-        LOG.debug(data)
-        stations = list(set([d['host'] for d in data]))
-        # from data, obtain: rt, rt_1, srt, sta
-        ret = []  # each line contains (R_t, R_t1, SR) --> contains the data to build the MOS
-        for sta in stations:
-            # get data to process
-            sta_data = [d for d in data if d['host'] == sta and 'playing_time' in d]
-            if len(sta_data) == 0:
-                # get next data
-                continue
-            if sta in last_rt:
-                # obtain the parameters
-                last_data = last_rt[sta]
-            else:
-                last_data = sta_data.pop(0)  # get first to perform difference
-            # get differences
-            # * check if there is more than one entry for this station
-            while len(sta_data) > 0:
-                actual_data = sta_data.pop(0)
-                # droppedFPS = actual_data['droppedFPS'] - last_data['droppedFPS']
-                t1 = datetime.strptime(actual_data['timestamp'], '%Y%m%d%H%M%S')
-                t0 = datetime.strptime(last_data['timestamp'], '%Y%m%d%H%M%S')
-                interval = (t1 - t0).seconds
-                if interval > 0:
-                    playing_time = actual_data['playing_time'] - last_data['playing_time']
-                    not_running = max(interval - playing_time, 0)
-                    srt = not_running / interval
-                else:
-                    srt = 0
-                rt = actual_data.get('reportedBitrate', 0) / MAX_REPORTED_BITRATE
-                rt_1 = last_data.get('reportedBitrate', rt) / MAX_REPORTED_BITRATE
-                # print([rt, rt_1, srt])
-                ret.append([rt, rt_1, srt, actual_data.get('mos', 1), sta])
-                last_data = actual_data
-                break
-
-            last_rt[sta] = last_data  # save for another iteration
-        LOG.debug(ret)
-        try:
-            self.send_dictionary(ret)
-        except KeyError:
-            self.send_error()
-
 
 def run(port=8080):
     try:
@@ -611,22 +418,6 @@ def run(port=8080):
             httpd.socket.close()
 
 
-def collect(port):
-    """ creates an HTTP server that receives POST requests from the client
-        save the BODY as JSON in a file
-
-        @param port: number of the server port. Required.
-    """
-    server_address = ('', port)
-    LOG.info('Starting httpd @ {}... for the firefox clients'.format(port))
-    global httpd
-    httpd = HTTPServer(server_address, SrvPosts)
-    try:
-        httpd.serve_forever()
-    except ValueError:
-        pass
-
-
 if __name__ == "__main__":
     # check if is root
     if os.geteuid() != 0:
@@ -636,20 +427,12 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser(description='Receive commands to the AP.')
         parser.add_argument('--port', type=int, default=8080, help='Set the server port')
         parser.add_argument('--debug', action='store_true', help='set logging level to debug')
-
-        parser.add_argument('--collect-firefox-data', action='store_true', help='creates a local server that receives POSTs from the web clients')
-        parser.add_argument('--port-firefox', type=int, default=8081, help='Set the server port to collect data from the firefox client')
         args = parser.parse_args()
 
         if args.debug:
             logging.basicConfig(level=logging.DEBUG)
             LOG.setLevel(logging.DEBUG)
             LOG.info("Debug activated")
-
-        if args.collect_firefox_data:
-            # create thread to receive POSTs from the clients containing
-            t = Thread(target=collect, args=(args.port_firefox, ))
-            t.start()
 
         # run server forever
         run(args.port)
