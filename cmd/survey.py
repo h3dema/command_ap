@@ -12,14 +12,14 @@ def decode_survey(data):
 
     @param data: output from iw dev survey dump
     @return: dictionary of dictionary
-            {2432: {'noise': '-95 dBm',
+             {2432: {'noise': '-95 dBm',
                     'in use': True,
                     'channel transmit time': '713 ms',
                     'channel busy time': '9479 ms',
                     'channel active time': '54259 ms',
                     'channel receive time': '8279 ms'},
-             2467: {},
-             }
+              2467: {},
+              }
     """
     lines = data.split('\n')
     result = dict()

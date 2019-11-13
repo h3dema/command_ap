@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #
 # works on Python 3
 # info: https://pyzmq.readthedocs.io/en/latest/
